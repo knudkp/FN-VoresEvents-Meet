@@ -1,4 +1,14 @@
 name = "fn-voresevents-meet"
+main = "src/index.ts"
+compatibility_date = "2024-09-25"
+
+[[durable_objects.bindings]]
+name = "rooms"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]name = "fn-voresevents-meet"
 # https://developers.cloudflare.com/workers/platform/compatibility-dates
 compatibility_date = "2024-10-07"
 main = "./build/index.js"
