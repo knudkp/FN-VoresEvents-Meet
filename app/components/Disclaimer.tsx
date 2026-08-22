@@ -15,7 +15,7 @@ export const Disclaimer: FC<DisclaimerProps> = ({ className }) => {
 				rel="noopener noreferrer"
 				className="underline hover:text-zinc-300"
 			>
-				Fleksjobbernetværket
+				Fleksjobber Netværket
 			</a>
 		</p>
 	)
