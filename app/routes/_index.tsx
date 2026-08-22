@@ -95,7 +95,7 @@ export default function Index() {
 							Logget ind som {data?.displayName}
 						</p>
 						{!usedAccess && (
-							
+							<a
 								className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
 								href="/set-username"
 							>
