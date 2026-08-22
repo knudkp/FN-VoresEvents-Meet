@@ -1,0 +1,5 @@
+Denne fil findes kun for at udløse et nyt Cloudflare-build,
+så CALLS_APP_SECRET kommer med i den kørende app.
+Du må gerne slette den igen senere - den betyder ikke noget.
+
+Trigger: 2026-08-22 (secret tilføjet)
