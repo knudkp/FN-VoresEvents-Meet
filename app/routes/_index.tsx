@@ -25,68 +25,127 @@ export const action: ActionFunction = async ({ request }) => {
 	return redirect(room.replace(/ /g, '-'))
 }
 
+function BrandPanel() {
+	return (
+		<div className="relative flex flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-gradient-to-br from-[#10787d] via-[#0b565b] to-[#07373d] p-10 text-center">
+			<div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+			<div className="pointer-events-none absolute -bottom-24 -right-16 h-72 w-72 rounded-full bg-black/10 blur-3xl" />
+			<svg
+				className="h-16 w-16 drop-shadow-lg"
+				viewBox="0 0 24 24"
+				fill="none"
+				xmlns="http://www.w3.org/2000/svg"
+				aria-hidden="true"
+			>
+				<defs>
+					<linearGradient
+						id="voresBolt"
+						x1="4"
+						y1="2"
+						x2="20"
+						y2="22"
+						gradientUnits="userSpaceOnUse"
+					>
+						<stop stopColor="#FFD23F" />
+						<stop offset="1" stopColor="#F7911B" />
+					</linearGradient>
+				</defs>
+				<path
+					d="M13 2 4.5 13.5H11l-1.5 8.5L20 9.5h-6.7L13 2Z"
+					fill="url(#voresBolt)"
+				/>
+			</svg>
+			<div>
+				<h1 className="text-4xl font-extrabold tracking-tight text-white">
+					Vores Events
+				</h1>
+				<p className="mt-2 text-sm text-white/70">
+					Sikre videomøder — når du har brug for det
+				</p>
+			</div>
+			<div className="flex flex-wrap items-center justify-center gap-2">
+				{['🎥 Videomøder', '🖥️ Skærmdeling', '⏱️ Ingen tidsgrænse'].map(
+					(t) => (
+						<span
+							key={t}
+							className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 ring-1 ring-white/15"
+						>
+							{t}
+						</span>
+					)
+				)}
+			</div>
+		</div>
+	)
+}
+
 export default function Index() {
 	const { username, usedAccess } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const { data } = useUserMetadata(username)
 
 	return (
-		<div className="flex flex-col items-center justify-center h-full p-4 mx-auto">
-			<div className="flex-1"></div>
-			<div className="space-y-6 sm:min-w-96">
-				<div>
-					<h1 className="text-3xl font-bold">🍊 Orange Meets</h1>
-					<div className="flex items-center justify-between gap-3">
-						<p className="text-sm text-zinc-500 dark:text-zinc-400">
-							Logged in as {data?.displayName}
+		<div className="flex min-h-full flex-col md:flex-row">
+			<BrandPanel />
+			<div className="flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
+				<div className="w-full max-w-sm">
+					<h2 className="text-2xl font-bold text-[#0b565b]">Klar til møde</h2>
+					<div className="mb-6 mt-1 flex items-center justify-between gap-3">
+						<p className="text-sm text-zinc-500">
+							Logget ind som {data?.displayName}
 						</p>
 						{!usedAccess && (
-							<a
-								className="block text-sm underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+							
+								className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
 								href="/set-username"
 							>
-								Change
+								Skift
 							</a>
 						)}
 					</div>
-				</div>
-				<div>
+
 					<ButtonLink
 						to="/new"
-						className="text-sm"
+						className="block w-full border-[#0d6d72] bg-[#0d6d72] text-center normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
 						onClick={(e) => {
-							// We shouldn't need a whole server visit to start a new room,
-							// so let's just do a redirect here
 							e.preventDefault()
 							navigate(`/${nanoid(8)}`)
-							// if someone clicks the link to create a new room
-							// before the js has loaded then we'll use a server side redirect
-							// (in new.tsx) to send the user to a new room
 						}}
 					>
-						New Room
+						Nyt møde
 					</ButtonLink>
+
+					<details className="mt-4 cursor-pointer">
+						<summary className="text-sm text-zinc-500">
+							Eller deltag i et møde
+						</summary>
+						<Form
+							className="grid w-full grid-cols-[1fr_auto] items-end gap-3 pt-4"
+							method="post"
+						>
+							<div className="space-y-2">
+								<Label htmlFor="room" className="text-zinc-700 dark:text-zinc-700">
+									Mødenavn
+								</Label>
+								<Input
+									name="room"
+									id="room"
+									required
+									className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+								/>
+							</div>
+							<Button
+								className="normal-case"
+								type="submit"
+								displayType="secondary"
+							>
+								Deltag
+							</Button>
+						</Form>
+					</details>
+
+					<Disclaimer className="mt-8" />
 				</div>
-				<details className="cursor-pointer">
-					<summary className="text-zinc-500 dark:text-zinc-400">
-						Or join a room
-					</summary>
-					<Form
-						className="grid items-end gap-4 grid-cols-[1fr_auto] w-full pt-4"
-						method="post"
-					>
-						<div className="space-y-2">
-							<Label htmlFor="room">Room name</Label>
-							<Input name="room" id="room" required />
-						</div>
-						<Button className="text-xs" type="submit" displayType="secondary">
-							Join
-						</Button>
-					</Form>
-				</details>
-			</div>
-			<div className="flex flex-col justify-end flex-1">
-				<Disclaimer className="pt-6" />
 			</div>
 		</div>
 	)
