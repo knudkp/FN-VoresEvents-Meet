@@ -87,7 +87,9 @@ npm run db:migrate:local  # kør D1-migrationer lokalt
   begge routes deler den. NB: dette miljø har ikke Node.js installeret,
   så `npm run typecheck`/`test`/`build` kunne ikke køres lokalt før push —
   GitHub Actions ("Checks" workflow) kører dem på push til `main`, tjek
-  status der efter push.
+  status der efter push. **Bekræftet live og virkende** samme dag —
+  brugerens vedvarende indtryk af den gamle redirect-URL skyldtes en
+  gammel browser-fane/cache, ikke en fejl i deployet.
 - **2026-08-23**: Oprettede denne fil. Ingen kode ændret. Grund: tidligere
   chat-session var utilgængelig for en ny session; denne fil skal sikre
   kontinuitet i konventioner/status fremover.
