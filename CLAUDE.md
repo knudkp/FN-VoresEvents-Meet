@@ -228,3 +228,19 @@ typecheck-fejl kan ligge skjult sådan.
     portable-zip-workaround som beskrevet i "Dev-kommandoer" ovenfor blev
     brugt for denne session; `wrangler login` kørte som en baggrundskommando
     mens brugeren godkendte OAuth-flowet i sin browser.
+  - **Endnu en bug fundet efter D1-fixen**: efter D1 var bundet virkede
+    `/set-password`-linket og login via forsiden, men admin-login crashede
+    med `Uncaught TypeError: e.createCookieSessionStorage is not a
+    function` i browseren, og at klikke sig videre til `/admin` efter
+    login endte tilbage på "Klar til møde". Årsag: `app/session.ts` og
+    `app/adminSession.ts` manglede Remix' `.server.ts`-navnekonvention,
+    så byggeren ikke vidste de skulle udelukkes fra client-bundlet — hele
+    modulet (inklusiv det øjeblikkelige `createCookieSessionStorage(...)`-
+    kald, en Cloudflare-only funktion) endte i en delt client-chunk og
+    crashede så snart den blev indlæst i browseren. Bekræftet lokalt ved
+    at bygge (`npx remix build`) og grep'e `public/build/` for
+    `createCookieSessionStorage` — fandt den i to chunks. Fix: omdøbt
+    begge filer til `session.server.ts`/`adminSession.server.ts` og
+    opdateret alle 9 importsteder; efter omdøbningen er strengen væk fra
+    `public/build/`. `npm run check` + `remix build` + `vitest` grønne
+    lokalt før push.
