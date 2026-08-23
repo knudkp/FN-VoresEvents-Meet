@@ -86,6 +86,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
 	const session = await getSession(request.headers.get('Cookie'))
 	session.set('username', displayName.trim())
+	session.set('role', 'admin')
 	const adminSession = await getAdminSession(request.headers.get('Cookie'))
 	adminSession.set('isAdmin', true)
 	const headers = new Headers()

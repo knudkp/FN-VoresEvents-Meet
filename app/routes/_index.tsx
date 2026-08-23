@@ -1,13 +1,19 @@
-import type { ActionFunction, LoaderFunctionArgs } from '@remix-run/cloudflare'
+import type {
+	ActionFunctionArgs,
+	LoaderFunctionArgs,
+} from '@remix-run/cloudflare'
 import { json, redirect } from '@remix-run/cloudflare'
 import {
 	Form,
+	useActionData,
 	useLoaderData,
 	useNavigate,
 	useSearchParams,
 } from '@remix-run/react'
+import { and, eq, isNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { useState } from 'react'
+import { getDb, Meetings } from 'schema'
 import invariant from 'tiny-invariant'
 import { AdminLoginDialog } from '~/components/AdminLoginDialog'
 import { Button } from '~/components/Button'
@@ -16,20 +22,47 @@ import { Input } from '~/components/Input'
 import { Label } from '~/components/Label'
 import { useUserMetadata } from '~/hooks/useUserMetadata'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
-import getUsername from '~/utils/getUsername.server'
+import getUsername, { getUserRole } from '~/utils/getUsername.server'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const directoryUrl = context.USER_DIRECTORY_URL
 	const username = await getUsername(request)
 	invariant(username)
 	const usedAccess = request.headers.has(ACCESS_AUTHENTICATED_USER_EMAIL_HEADER)
-	return json({ username, usedAccess, directoryUrl })
+	const role = await getUserRole(request)
+	return json({ username, usedAccess, directoryUrl, isGuest: role === null })
 }
 
-export const action: ActionFunction = async ({ request }) => {
+export const action = async ({ request, context }: ActionFunctionArgs) => {
 	const room = (await request.formData()).get('room')
 	invariant(typeof room === 'string')
-	return redirect(room.replace(/ /g, '-'))
+	const roomName = room.replace(/ /g, '-')
+
+	const role = await getUserRole(request)
+	if (!role) {
+		// guests may only join a meeting that's already active, never
+		// spin up a new one by typing an arbitrary name
+		const db = getDb(context)
+		const meeting = db
+			? (
+					await db
+						.select()
+						.from(Meetings)
+						.where(and(eq(Meetings.roomName, roomName), isNull(Meetings.ended)))
+				)[0]
+			: undefined
+		if (!meeting) {
+			return json(
+				{
+					error:
+						'Dette møde findes ikke. Log ud og prøv igen, eller kontakt værten.',
+				},
+				{ status: 400 }
+			)
+		}
+	}
+
+	return redirect(roomName)
 }
 
 function BrandPanel() {
@@ -87,12 +120,13 @@ function BrandPanel() {
 }
 
 export default function Index() {
-	const { username, usedAccess } = useLoaderData<typeof loader>()
+	const { username, usedAccess, isGuest } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const { data } = useUserMetadata(username)
 	const [searchParams] = useSearchParams()
 	const wasRemoved = searchParams.get('removed') === '1'
 	const [newRoomName, setNewRoomName] = useState(() => nanoid(8))
+	const actionData = useActionData<typeof action>()
 
 	return (
 		<div className="flex min-h-full flex-col md:flex-row">
@@ -129,63 +163,88 @@ export default function Index() {
 						)}
 					</div>
 
-					<Form
-						className="space-y-2"
-						onSubmit={(e) => {
-							e.preventDefault()
-							const name = newRoomName.trim()
-							if (!name) return
-							navigate(`/${name.replace(/ /g, '-')}`)
-						}}
-					>
-						<Label htmlFor="newRoom" className="text-zinc-700 dark:text-zinc-700">
-							Mødenavn
-						</Label>
-						<div className="flex gap-3">
-							<Input
-								id="newRoom"
-								value={newRoomName}
-								onChange={(e) => setNewRoomName(e.target.value)}
-								required
-								className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
-							/>
-							<Button
-								type="submit"
-								className="whitespace-nowrap border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
-							>
-								Nyt møde
-							</Button>
-						</div>
-					</Form>
-
-					<details className="mt-4 cursor-pointer">
-						<summary className="text-sm text-zinc-500">
-							Eller deltag i et møde
-						</summary>
+					{!isGuest && (
 						<Form
-							className="grid w-full grid-cols-[1fr_auto] items-end gap-3 pt-4"
-							method="post"
+							className="space-y-2"
+							onSubmit={(e) => {
+								e.preventDefault()
+								const name = newRoomName.trim()
+								if (!name) return
+								navigate(`/${name.replace(/ /g, '-')}`)
+							}}
 						>
-							<div className="space-y-2">
-								<Label htmlFor="room" className="text-zinc-700 dark:text-zinc-700">
-									Mødenavn
-								</Label>
+							<Label htmlFor="newRoom" className="text-zinc-700 dark:text-zinc-700">
+								Mødenavn
+							</Label>
+							<div className="flex gap-3">
 								<Input
-									name="room"
-									id="room"
+									id="newRoom"
+									value={newRoomName}
+									onChange={(e) => setNewRoomName(e.target.value)}
 									required
 									className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
 								/>
+								<Button
+									type="submit"
+									className="whitespace-nowrap border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
+								>
+									Nyt møde
+								</Button>
 							</div>
-							<Button
-								className="normal-case"
-								type="submit"
-								displayType="secondary"
-							>
-								Deltag
-							</Button>
 						</Form>
-					</details>
+					)}
+
+					{(() => {
+						const joinForm = (
+							<>
+								<Form
+									className="grid w-full grid-cols-[1fr_auto] items-end gap-3 pt-4"
+									method="post"
+								>
+									<div className="space-y-2">
+										<Label
+											htmlFor="room"
+											className="text-zinc-700 dark:text-zinc-700"
+										>
+											Mødenavn
+										</Label>
+										<Input
+											name="room"
+											id="room"
+											required
+											className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+										/>
+									</div>
+									<Button
+										className="normal-case"
+										type="submit"
+										displayType="secondary"
+									>
+										Deltag
+									</Button>
+								</Form>
+								{actionData?.error && (
+									<p className="pt-2 text-sm text-red-500">
+										{actionData.error}
+									</p>
+								)}
+							</>
+						)
+
+						return isGuest ? (
+							<div className="mt-4">
+								<p className="text-sm text-zinc-500">Deltag i et møde</p>
+								{joinForm}
+							</div>
+						) : (
+							<details className="mt-4 cursor-pointer">
+								<summary className="text-sm text-zinc-500">
+									Eller deltag i et møde
+								</summary>
+								{joinForm}
+							</details>
+						)
+					})()}
 
 					<Disclaimer className="mt-8" />
 					<div className="mt-2">

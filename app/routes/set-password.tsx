@@ -85,6 +85,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
 	const session = await getSession(request.headers.get('Cookie'))
 	session.set('username', displayName.trim())
+	session.set('role', user.role)
 	const headers = new Headers()
 	headers.append('Set-Cookie', await commitSession(session))
 	if (user.role === 'admin') {
