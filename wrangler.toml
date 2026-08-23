@@ -16,3 +16,10 @@ class_name = "ChatRoom"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["ChatRoom"]
+
+# The necessary secrets are:
+# - CALLS_APP_SECRET
+# - HOST_PASSWORD (optional — required only to enable host features)
+# Set these in the Cloudflare dashboard (Workers & Pages > this worker >
+# Settings > Variables and Secrets), or run:
+# echo <VALUE> | wrangler secret put <NAME>
