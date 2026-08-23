@@ -91,6 +91,16 @@ typecheck-fejl kan ligge skjult sådan.
 
 ## Log
 
+- **2026-08-23**: Tilføjede Open Graph/Twitter-metatags (delingsbillede),
+  da brugeren delte URL'en på LinkedIn og savnede et billede. Nyt
+  [public/og-image.png](public/og-image.png) (1200×630, samme
+  gradient/logo/tags som BrandPanel — genereret som HTML og
+  Playwright-screenshottet, ikke håndtegnet). `og:url`/`og:image` bruger
+  det faktiske request-domæne (`url.origin` fra
+  [app/root.tsx](app/root.tsx)'s loader, sendt til `meta` via
+  loaderData) — virker automatisk på alle domæner/miljøer uden
+  hardkodning. Husk at regenerere `og-image.png` hvis BrandPanel's
+  visuelle stil (farver/logo/navn) ændres igen.
 - **2026-08-23**: Tilføjede validering af gæste-visningsnavne
   ([app/utils/validateDisplayName.ts](app/utils/validateDisplayName.ts),
   med enhedstests): max 10 tegn, kun bogstaver (inkl. æøå) efterfulgt af

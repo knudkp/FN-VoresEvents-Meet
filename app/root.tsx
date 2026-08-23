@@ -49,6 +49,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
 	const defaultResponse = json({
 		userDirectoryUrl: context.env.USER_DIRECTORY_URL,
+		origin: url.origin,
 	})
 
 	// we only care about verifying token freshness if request was a user
@@ -80,11 +81,27 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	return defaultResponse
 }
 
-export const meta: MetaFunction = () => [
-	{
-		title: APP_NAME,
-	},
-]
+const DESCRIPTION = 'Sikre videomøder — når du har brug for det.'
+
+export const meta: MetaFunction<typeof loader> = ({ data }) => {
+	const origin = data?.origin ?? ''
+	const imageUrl = origin ? `${origin}/og-image.png` : '/og-image.png'
+	return [
+		{ title: APP_NAME },
+		{ name: 'description', content: DESCRIPTION },
+		{ property: 'og:type', content: 'website' },
+		{ property: 'og:title', content: APP_NAME },
+		{ property: 'og:description', content: DESCRIPTION },
+		{ property: 'og:url', content: origin },
+		{ property: 'og:image', content: imageUrl },
+		{ property: 'og:image:width', content: '1200' },
+		{ property: 'og:image:height', content: '630' },
+		{ name: 'twitter:card', content: 'summary_large_image' },
+		{ name: 'twitter:title', content: APP_NAME },
+		{ name: 'twitter:description', content: DESCRIPTION },
+		{ name: 'twitter:image', content: imageUrl },
+	]
+}
 
 export const links: LinksFunction = () => [
 	{ rel: 'stylesheet', href: tailwind },
