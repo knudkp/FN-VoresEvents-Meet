@@ -155,6 +155,14 @@ kode der bruger D1 tjekker eksplicit for `null` og degraderer i stedet for
 at crashe — appen virker stadig uden D1, bare uden konti/historik/presets.
 Se CLAUDE.md for status på om D1 er bundet i den aktuelle deployment.
 
+D1 kan altså eksistere og indeholde data i Cloudflare-kontoen **uden** at
+være bundet til worker'en — de er to uafhængige ting (databasen oprettes
+med `wrangler d1 create`, bindingen sker separat via `wrangler.toml`'s
+`[[d1_databases]]`-blok eller dashboardets Settings → Bindings). Sket i
+praksis 2026-08-23: databasen fandtes og var fuldt migreret, men var ikke
+bundet, hvilket gjorde D1-afhængig login umuligt uden nogen synlig
+fejlbesked forskellig fra "ugyldigt token" — se CLAUDE.md's log.
+
 ## 5. Durable Object: `ChatRoom`
 
 [app/durableObjects/ChatRoom.server.ts](app/durableObjects/ChatRoom.server.ts)
@@ -345,6 +353,12 @@ visningsnavn er sat).
 E-mailen sendes via Resend (`RESEND_API_KEY`); uden en nøgle, eller hvis
 sendingen fejler, viser `/admin`-dashboardet linket direkte i UI'et til
 manuel distribution i stedet.
+
+[scripts/reset-admin-access.mjs](scripts/reset-admin-access.mjs) gør
+præcis det samme (skriver et nyt `inviteTokenHash`/`inviteTokenExpires`
+direkte i D1 via `wrangler d1 execute`) for en konto man er låst helt ude
+af — inklusiv `/admin` selv — så man ikke skal være logget ind for at
+generere et nyt link. Kræver kun `wrangler login`.
 
 ### 6.5 Gæste-visningsnavne — validering
 

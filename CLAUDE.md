@@ -43,11 +43,14 @@ Roller: `moderator` er automatisk vært i ethvert møde de joiner. `admin` får
 adgang til `/admin`. Alm. `user`/gæst kan kun joine et allerede aktivt møde,
 ikke oprette et nyt (seneste commit, 96aee1f).
 
-**Vigtigt**: `wrangler.toml` har pt. **ingen D1-database bundet**
-(`[[d1_databases]]` er udkommenteret). Uden den virker appen stadig (video
-og `HOST_PASSWORD`-baseret host), men brugerkonti, chat-historik, admin-log
-og rum-presets er inaktive. Husk dette når nye D1-afhængige features
-tilføjes — de skal fejle "blødt" (som eksisterende kode gør), ikke crashe.
+**D1 er nu bundet** (`wrangler.toml`'s `[[d1_databases]]`, `binding = "DB"`,
+database `fn-voresevents-meet-db`, id `5d79df48-5696-4fb0-84cc-a1f724816e99`)
+— se Log-posten fra 2026-08-23 (admin-lockout) for hvordan det blev opdaget
+at den *ikke* var bundet, selvom databasen og alle migrationer allerede
+fandtes i Cloudflare-kontoen. Uanset om D1 er bundet, skal ny D1-afhængig
+kode stadig fejle "blødt" (som eksisterende kode gør, via `getDb()` der
+returnerer `null`), ikke crashe — så appen ikke går i stykker hvis nogen
+binding igen forsvinder ved et uheld.
 
 ## Nøglefiler
 
@@ -195,3 +198,33 @@ typecheck-fejl kan ligge skjult sådan.
     Radix Dialog-mønster som `AdminLoginDialog`.
   - `.gitignore`s `.fake`-linje er beholdt/committet (ren lokal
     scratch-ignorering, harmløst — ingen kode refererer til `.fake`).
+- **2026-08-23**: Bruger mistede admin-adgang (`admin`-kontoen, login på
+  `/admin/login` og forsidens "Som admin"-fane). Undersøgt og løst:
+  - **Root cause fundet**: `wrangler.toml`'s `[[d1_databases]]` var
+    udkommenteret (som denne fils tidligere tekst her advarede om), men
+    D1-databasen `fn-voresevents-meet-db` **fandtes allerede** i Cloudflare-
+    kontoen med alle migrationer kørt (`Users`, `Meetings`, `Rooms`,
+    `ChatMessages`, `AdminAuditLog` m.fl.) — inklusiv en rigtig, aktiveret
+    `admin`-bruger. Den var bare aldrig koblet til selve worker'en (dashboardets
+    Settings → Bindings viste kun Durable Object `rooms` og KV
+    `__STATIC_CONTENT`, ingen D1). Derfor virkede D1-afhængig login
+    ikke, og `/set-password?token=...` viste "Linket er ugyldigt eller
+    udløbet" uanset et gyldigt token — `getDb()` returnerer `null` når
+    bindingen mangler, hvilket ser identisk ud udefra som et reelt
+    ugyldigt/udløbet token (se [set-password.tsx:25-26](app/routes/set-password.tsx#L25-L26)).
+  - **Fix**: `wrangler.toml`'s D1-blok er nu udkommenteret ind igen med det
+    rigtige `database_id` (`5d79df48-5696-4fb0-84cc-a1f724816e99`) — se
+    "Datamodel (D1)" ovenfor. Et push til `main` trigger et Cloudflare
+    Workers Build-redeploy der binder den.
+  - **Nyt værktøj**: [scripts/reset-admin-access.mjs](scripts/reset-admin-access.mjs)
+    — et lille "break-glass"-script (kræver kun `wrangler login`, ingen
+    bagdør i selve appen) til fremtidige lockouts:
+    `node scripts/reset-admin-access.mjs user <brugernavn>` genererer et
+    nyt engangs `/set-password`-link direkte i D1 (samme mekanisme som
+    "Gensend invite" i `/admin`, men uden at skulle være logget ind
+    først); `node scripts/reset-admin-access.mjs master` roterer
+    `HOST_PASSWORD` interaktivt via `wrangler secret put`.
+  - Node/wrangler var ikke installeret i dette Windows-miljø — samme
+    portable-zip-workaround som beskrevet i "Dev-kommandoer" ovenfor blev
+    brugt for denne session; `wrangler login` kørte som en baggrundskommando
+    mens brugeren godkendte OAuth-flowet i sin browser.
