@@ -34,7 +34,9 @@ function addOneDay(date: Date): Date {
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const url = new URL(request.url)
 	const username = await getUsername(request)
-	if (!username && url.pathname !== '/set-username') {
+	const skipUsernameGate =
+		url.pathname === '/set-username' || url.pathname.startsWith('/admin')
+	if (!username && !skipUsernameGate) {
 		const redirectUrl = new URL(url)
 		redirectUrl.pathname = '/set-username'
 		redirectUrl.searchParams.set('return-url', request.url)
