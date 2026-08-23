@@ -52,6 +52,7 @@ const UserListItem: FC<{
 			)}
 			<MuteUserButton user={user} />
 			<KickUserButton user={user} />
+		</li>
 	)
 }
 
