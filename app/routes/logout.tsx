@@ -1,6 +1,6 @@
 import type { ActionFunction } from '@remix-run/cloudflare'
 import { redirect } from '@remix-run/cloudflare'
-import { destroySession, getSession } from '~/session'
+import { destroySession, getSession } from '~/session.server'
 
 export const action: ActionFunction = async ({ request }) => {
 	const session = await getSession(request.headers.get('Cookie'))

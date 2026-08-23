@@ -1,7 +1,7 @@
 import { Crypto } from '@peculiar/webcrypto'
 import { describe, expect, it, vi } from 'vitest'
 import { loader } from './root'
-import { commitSession, getSession } from './session'
+import { commitSession, getSession } from './session.server'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from './utils/constants'
 
 vi.stubGlobal('crypto', new Crypto())

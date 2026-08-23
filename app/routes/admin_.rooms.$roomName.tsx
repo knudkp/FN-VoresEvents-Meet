@@ -5,7 +5,7 @@ import type {
 import { json } from '@remix-run/cloudflare'
 import { Form, useLoaderData } from '@remix-run/react'
 import invariant from 'tiny-invariant'
-import { requireAdmin } from '~/adminSession'
+import { requireAdmin } from '~/adminSession.server'
 import { Button } from '~/components/Button'
 import type { Env } from '~/types/Env'
 import type { User } from '~/types/Messages'

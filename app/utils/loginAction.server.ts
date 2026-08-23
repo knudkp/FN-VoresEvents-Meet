@@ -2,8 +2,8 @@ import { json, redirect, type AppLoadContext } from '@remix-run/cloudflare'
 import { eq } from 'drizzle-orm'
 import { getDb, Users } from 'schema'
 import invariant from 'tiny-invariant'
-import { commitAdminSession, getAdminSession } from '~/adminSession'
-import { commitSession, getSession } from '~/session'
+import { commitAdminSession, getAdminSession } from '~/adminSession.server'
+import { commitSession, getSession } from '~/session.server'
 import { verifyUserPassword } from '~/utils/passwordHash.server'
 
 export async function handleLoginIntent(

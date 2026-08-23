@@ -1,4 +1,4 @@
-import { commitSession, getSession } from '~/session'
+import { commitSession, getSession } from '~/session.server'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from './constants'
 import { safeRedirect } from './safeReturnUrl'
 
