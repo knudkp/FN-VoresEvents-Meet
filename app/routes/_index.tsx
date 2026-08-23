@@ -29,6 +29,7 @@ import getUsername, {
 	setUsername,
 } from '~/utils/getUsername.server'
 import { handleLoginIntent } from '~/utils/loginAction.server'
+import { normalizeGuestDisplayName } from '~/utils/validateDisplayName'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const directoryUrl = context.USER_DIRECTORY_URL
@@ -81,7 +82,11 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
 	const username = formData.get('username')
 	invariant(typeof username === 'string')
-	return setUsername(username, request, '/')
+	const normalized = normalizeGuestDisplayName(username)
+	if (!normalized.ok) {
+		return json({ error: normalized.error }, { status: 400 })
+	}
+	return setUsername(normalized.value, request, '/')
 }
 
 export default function Index() {

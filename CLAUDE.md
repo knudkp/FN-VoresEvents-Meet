@@ -91,6 +91,16 @@ typecheck-fejl kan ligge skjult sådan.
 
 ## Log
 
+- **2026-08-23**: Tilføjede validering af gæste-visningsnavne
+  ([app/utils/validateDisplayName.ts](app/utils/validateDisplayName.ts),
+  med enhedstests): max 10 tegn, kun bogstaver (inkl. æøå) efterfulgt af
+  valgfrie afsluttende cifre (fx "Knud99"), og et lille forbogstav
+  rettes automatisk til stort i stedet for at blive afvist — kun en
+  reel fejl (forkert tegn, cifre først/midt i, for langt) giver en
+  fejlmeddelelse. Gælder kun gæstenavne (`/` og `/set-username`'s
+  "Fortsæt som gæst"), ikke rigtige brugerkontis displayName (sat via
+  `/set-password`). Testet end-to-end med Playwright mod en lokal
+  wrangler dev-server (både success- og fejl-stien).
 - **2026-08-23**: Polish-runde på velkomstskærmen efter brugerfeedback
   på et screenshot: hjælpe-ikonet (`?` øverst til højre) var teknisk til
   stede i DOM'en men for lavkontrast (grå kant/tekst på hvid) til reelt

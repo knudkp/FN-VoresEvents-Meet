@@ -1,4 +1,4 @@
-import { type ActionFunctionArgs } from '@remix-run/cloudflare'
+import { json, type ActionFunctionArgs } from '@remix-run/cloudflare'
 import { useActionData } from '@remix-run/react'
 import invariant from 'tiny-invariant'
 import { AuthChoiceForm } from '~/components/AuthChoiceForm'
@@ -8,6 +8,7 @@ import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
 import { setUsername } from '~/utils/getUsername.server'
 import { handleLoginIntent } from '~/utils/loginAction.server'
 import { safeRedirect } from '~/utils/safeReturnUrl'
+import { normalizeGuestDisplayName } from '~/utils/validateDisplayName'
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
 	const url = new URL(request.url)
@@ -26,7 +27,11 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
 	const username = formData.get('username')
 	invariant(typeof username === 'string')
-	return setUsername(username, request, returnUrl)
+	const normalized = normalizeGuestDisplayName(username)
+	if (!normalized.ok) {
+		return json({ error: normalized.error }, { status: 400 })
+	}
+	return setUsername(normalized.value, request, returnUrl)
 }
 
 export default function SetUsername() {

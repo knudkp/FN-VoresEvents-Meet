@@ -57,10 +57,12 @@ export function AuthChoiceForm({ error }: { error?: string }) {
 							type="text"
 							id="username"
 							name="username"
+							maxLength={10}
 							placeholder="F.eks. Knud"
 							className={inputClassName}
 						/>
 					</div>
+					{error && <p className="text-sm text-red-500">{error}</p>}
 					<Button type="submit" className={continueButtonClassName}>
 						Fortsæt
 					</Button>
