@@ -1,3 +1,4 @@
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
 import {
@@ -11,6 +12,8 @@ import { useMount, useWindowSize } from 'react-use'
 import { AiButton } from '~/components/AiButton'
 import { ButtonLink } from '~/components/Button'
 import { CameraButton } from '~/components/CameraButton'
+import { ChatButton } from '~/components/ChatButton'
+import { ChatPanel } from '~/components/ChatPanel'
 import { CopyButton } from '~/components/CopyButton'
 import { HighPacketLossWarningsToast } from '~/components/HighPacketLossWarningsToast'
 import { IceDisconnectedToast } from '~/components/IceDisconnectedToast'
@@ -24,9 +27,11 @@ import { RaiseHandButton } from '~/components/RaiseHandButton'
 import { SafetyNumberToast } from '~/components/SafetyNumberToast'
 import { ScreenshareButton } from '~/components/ScreenshareButton'
 import Toast, { useDispatchToast } from '~/components/Toast'
+import { Tooltip } from '~/components/Tooltip'
 import useBroadcastStatus from '~/hooks/useBroadcastStatus'
 import useIsSpeaking from '~/hooks/useIsSpeaking'
 import { useRoomContext } from '~/hooks/useRoomContext'
+import { useRoomUrl } from '~/hooks/useRoomUrl'
 import { useShowDebugInfoShortcut } from '~/hooks/useShowDebugInfoShortcut'
 import useSounds from '~/hooks/useSounds'
 import useStageManager from '~/hooks/useStageManager'
@@ -107,7 +112,9 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 	useShowDebugInfoShortcut()
 
 	const [raisedHand, setRaisedHand] = useState(false)
+	const [chatOpen, setChatOpen] = useState(false)
 	const speaking = useIsSpeaking(userMedia.audioStreamTrack)
+	const roomUrl = useRoomUrl()
 
 	useMount(() => {
 		if (otherUsers.length > 5) {
@@ -169,29 +176,32 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 			audioTracks={otherUsers.map((u) => u.tracks.audio).filter(isNonNullable)}
 		>
 			<div className="flex flex-col h-full bg-white dark:bg-zinc-800">
-				<div className="relative flex-grow bg-black isolate">
-					<div
-						style={{ '--gap': gridGap + 'px' } as any}
-						className="absolute inset-0 flex isolate p-[--gap] gap-[--gap]"
-					>
-						{pinnedActors.length > 0 && (
-							<div className="flex-grow-[5] overflow-hidden relative">
+				<div className="flex flex-1 overflow-hidden">
+					<div className="relative flex-1 min-w-0 bg-black isolate">
+						<div
+							style={{ '--gap': gridGap + 'px' } as any}
+							className="absolute inset-0 flex isolate p-[--gap] gap-[--gap]"
+						>
+							{pinnedActors.length > 0 && (
+								<div className="flex-grow-[5] overflow-hidden relative">
+									<ParticipantLayout
+										users={pinnedActors.filter(isNonNullable)}
+										gap={gridGap}
+										aspectRatio="16:9"
+									/>
+								</div>
+							)}
+							<div className="flex-grow overflow-hidden relative">
 								<ParticipantLayout
-									users={pinnedActors.filter(isNonNullable)}
+									users={unpinnedActors.filter(isNonNullable)}
 									gap={gridGap}
-									aspectRatio="16:9"
+									aspectRatio="4:3"
 								/>
 							</div>
-						)}
-						<div className="flex-grow overflow-hidden relative">
-							<ParticipantLayout
-								users={unpinnedActors.filter(isNonNullable)}
-								gap={gridGap}
-								aspectRatio="4:3"
-							/>
 						</div>
+						<Toast.Viewport className="absolute bottom-0 right-0" />
 					</div>
-					<Toast.Viewport className="absolute bottom-0 right-0" />
+					{chatOpen && <ChatPanel onClose={() => setChatOpen(false)} />}
 				</div>
 				<div className="flex flex-wrap items-center justify-center gap-2 p-2 text-sm md:gap-4 md:p-5 md:text-base">
 					{hasAiCredentials && <AiButton recordActivity={recordActivity} />}
@@ -202,6 +212,16 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 						raisedHand={raisedHand}
 						onClick={() => setRaisedHand(!raisedHand)}
 					/>
+					<ChatButton
+						chatOpen={chatOpen}
+						onClick={() => setChatOpen((open) => !open)}
+						messages={room.roomState.chatMessages}
+					/>
+					<Tooltip content="Kopiér mødelink">
+						<CopyButton contentValue={roomUrl}>
+							<VisuallyHidden>Kopiér mødelink</VisuallyHidden>
+						</CopyButton>
+					</Tooltip>
 					<ParticipantsButton
 						identity={identity}
 						otherUsers={otherUsers}

@@ -1,5 +1,10 @@
 import type { Env } from '~/types/Env'
-import type { ClientMessage, ServerMessage, User } from '~/types/Messages'
+import type {
+	ChatMessage,
+	ClientMessage,
+	ServerMessage,
+	User,
+} from '~/types/Messages'
 import { assertError } from '~/utils/assertError'
 import assertNever from '~/utils/assertNever'
 import { assertNonNullable } from '~/utils/assertNonNullable'
@@ -7,6 +12,7 @@ import getUsername from '~/utils/getUsername.server'
 
 import { eq, sql } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
+import { nanoid } from 'nanoid'
 import {
 	Server,
 	type Connection,
@@ -77,6 +83,26 @@ export class ChatRoom extends Server<Env> {
 
 		const username = await getUsername(ctx.request)
 		assertNonNullable(username)
+
+		const roomLocked = (await this.ctx.storage.get<boolean>('roomLocked')) ?? false
+		if (roomLocked) {
+			const hostConnectionId =
+				await this.ctx.storage.get<string>('hostConnectionId')
+			const hostUser = hostConnectionId
+				? await this.ctx.storage.get<User>(`session-${hostConnectionId}`)
+				: undefined
+			const isReconnectingHost = hostUser?.name === username
+			if (!isReconnectingHost) {
+				this.sendMessage(connection, { type: 'error', error: 'room-locked' })
+				log({
+					eventName: 'roomLockedRejection',
+					meetingId: await this.getMeetingId(),
+					connectionId: connection.id,
+				})
+				connection.close(4003, 'Room is locked')
+				return
+			}
+		}
 
 		let user = await this.ctx.storage.get<User>(`session-${connection.id}`)
 		const foundInStorage = user !== undefined
@@ -207,6 +233,15 @@ export class ChatRoom extends Server<Env> {
 			(await this.ctx.storage.get<string>('ai:sessionId')) ?? undefined
 		const aiAudioTrack =
 			(await this.ctx.storage.get<string>('ai:trackName')) ?? undefined
+		const hostConnectionId =
+			await this.ctx.storage.get<string>('hostConnectionId')
+		const roomLocked =
+			(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
+		const chatEnabled =
+			(await this.ctx.storage.get<boolean>('chatEnabled')) ?? true
+		const chatMessages = [
+			...(await this.ctx.storage.list<ChatMessage>({ prefix: 'chat:' })).values(),
+		].slice(-200)
 		const roomState = {
 			type: 'roomState',
 			state: {
@@ -220,8 +255,14 @@ export class ChatRoom extends Server<Env> {
 					error: await this.ctx.storage.get<string>('ai:error'),
 				},
 				meetingId,
+				roomLocked,
+				chatEnabled,
+				chatMessages,
 				users: [
-					...(await this.getUsers()).values(),
+					...[...(await this.getUsers()).values()].map((u) => ({
+						...u,
+						isHost: u.id === hostConnectionId,
+					})),
 					...(aiEnabled
 						? [
 								{
@@ -245,6 +286,24 @@ export class ChatRoom extends Server<Env> {
 			},
 		} satisfies ServerMessage
 		return this.broadcastMessage(roomState)
+	}
+
+	// Single source of truth for host permission checks. Sends an
+	// error back to the requester and returns false when denied, so
+	// every gated case in onMessage can early-return on this one line.
+	async requireHost(connection: Connection, action: string): Promise<boolean> {
+		const hostConnectionId =
+			await this.ctx.storage.get<string>('hostConnectionId')
+		if (hostConnectionId === connection.id) return true
+		this.sendMessage(connection, { type: 'error', error: 'not-authorized' })
+		const meetingId = await this.getMeetingId()
+		log({
+			eventName: 'unauthorizedHostAction',
+			meetingId,
+			connectionId: connection.id,
+			action,
+		})
+		return false
 	}
 
 	async onClose(
@@ -338,6 +397,9 @@ export class ChatRoom extends Server<Env> {
 					break
 				}
 				case 'muteUser': {
+					const isSelfMute = data.id === connection.id
+					if (!isSelfMute && !(await this.requireHost(connection, 'muteUser')))
+						break
 					const user = await this.ctx.storage.get<User>(
 						`session-${connection.id}`
 					)
@@ -368,6 +430,132 @@ export class ChatRoom extends Server<Env> {
 							`User with id "${data.id}" not found, cannot mute user from "${user!.name}"`
 						)
 					}
+					break
+				}
+
+				case 'muteAll': {
+					if (!(await this.requireHost(connection, 'muteAll'))) break
+					for (const otherConnection of this.getConnections<User>()) {
+						if (otherConnection.id === connection.id) continue
+						const otherUser = await this.ctx.storage.get<User>(
+							`session-${otherConnection.id}`
+						)
+						if (!otherUser) continue
+						await this.ctx.storage.put(`session-${otherConnection.id}`, {
+							...otherUser,
+							tracks: {
+								...otherUser.tracks,
+								audioEnabled: false,
+							},
+						})
+						this.sendMessage(otherConnection, { type: 'muteMic' })
+					}
+					await this.broadcastRoomState()
+					break
+				}
+
+				case 'kickUser': {
+					if (!(await this.requireHost(connection, 'kickUser'))) break
+					if (data.id === connection.id) break
+					const targetConnection = [...this.getConnections<User>()].find(
+						(c) => c.id === data.id
+					)
+					if (!targetConnection) {
+						console.warn(
+							`User with id "${data.id}" not found, cannot kick user`
+						)
+						break
+					}
+					this.sendMessage(targetConnection, { type: 'kicked' })
+					targetConnection.close(4001, 'Removed by host')
+					await this.ctx.storage.delete(`session-${data.id}`).catch(() => {
+						console.warn(`Failed to delete session session-${data.id} on kick`)
+					})
+					await this.ctx.storage.delete(`heartbeat-${data.id}`).catch(() => {
+						console.warn(
+							`Failed to delete session heartbeat-${data.id} on kick`
+						)
+					})
+					this.userLeftNotification(data.id)
+					await this.broadcastRoomState()
+					break
+				}
+
+				case 'claimHost': {
+					if (!this.env.HOST_PASSWORD) {
+						this.sendMessage(connection, {
+							type: 'error',
+							error: 'host-password-not-configured',
+						})
+						break
+					}
+					if (data.password !== this.env.HOST_PASSWORD) {
+						this.sendMessage(connection, {
+							type: 'error',
+							error: 'invalid-host-password',
+						})
+						break
+					}
+					await this.ctx.storage.put('hostConnectionId', connection.id)
+					log({
+						eventName: 'hostClaimed',
+						meetingId,
+						connectionId: connection.id,
+					})
+					await this.broadcastRoomState()
+					break
+				}
+
+				case 'lockRoom': {
+					if (!(await this.requireHost(connection, 'lockRoom'))) break
+					await this.ctx.storage.put('roomLocked', data.locked)
+					await this.broadcastRoomState()
+					break
+				}
+
+				case 'toggleChat': {
+					if (!(await this.requireHost(connection, 'toggleChat'))) break
+					await this.ctx.storage.put('chatEnabled', data.enabled)
+					await this.broadcastRoomState()
+					break
+				}
+
+				case 'chatMessage': {
+					const chatEnabled =
+						(await this.ctx.storage.get<boolean>('chatEnabled')) ?? true
+					if (!chatEnabled) {
+						this.sendMessage(connection, {
+							type: 'error',
+							error: 'chat-disabled',
+						})
+						break
+					}
+					const trimmed = data.message.trim()
+					if (trimmed.length === 0) break
+					if (trimmed.length > 2000) {
+						this.sendMessage(connection, {
+							type: 'error',
+							error: 'chat-message-too-long',
+						})
+						break
+					}
+					const sender = await this.ctx.storage.get<User>(
+						`session-${connection.id}`
+					)
+					if (!sender) break
+					const sentAt = Date.now()
+					const chatMessage = {
+						id: nanoid(),
+						fromId: connection.id,
+						from: sender.name,
+						message: trimmed,
+						sentAt,
+					} satisfies ChatMessage
+					await this.ctx.storage.put(
+						`chat:${sentAt}-${chatMessage.id}`,
+						chatMessage
+					)
+					await this.broadcastRoomState()
 					break
 				}
 

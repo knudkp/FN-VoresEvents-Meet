@@ -1,8 +1,30 @@
+import { useNavigate } from '@remix-run/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ClientMessage, RoomState, ServerMessage } from '~/types/Messages'
+import type {
+	ClientMessage,
+	KnownErrorCode,
+	RoomState,
+	ServerMessage,
+} from '~/types/Messages'
 
 import usePartySocket from 'partysocket/react'
 import type { UserMedia } from './useUserMedia'
+
+const knownErrorCodes: KnownErrorCode[] = [
+	'not-authorized',
+	'invalid-host-password',
+	'host-password-not-configured',
+	'room-locked',
+	'chat-disabled',
+	'chat-message-too-long',
+]
+
+function isKnownErrorCode(error: unknown): error is KnownErrorCode {
+	return (
+		typeof error === 'string' &&
+		knownErrorCodes.includes(error as KnownErrorCode)
+	)
+}
 
 export default function useRoom({
 	roomName,
@@ -11,10 +33,16 @@ export default function useRoom({
 	roomName: string
 	userMedia: UserMedia
 }) {
+	const navigate = useNavigate()
 	const [roomState, setRoomState] = useState<RoomState>({
 		users: [],
+		roomLocked: false,
+		chatEnabled: true,
+		chatMessages: [],
 		ai: { enabled: false },
 	})
+	const [deniedReason, setDeniedReason] = useState<'room-locked' | null>(null)
+	const [lastError, setLastError] = useState<KnownErrorCode | undefined>()
 
 	const userLeftFunctionRef = useRef(() => {})
 
@@ -36,6 +64,13 @@ export default function useRoom({
 				case 'error':
 					console.error('Received error message from WebSocket')
 					console.error(message.error)
+					if (isKnownErrorCode(message.error)) {
+						setLastError(message.error)
+						if (message.error === 'room-locked') setDeniedReason('room-locked')
+					}
+					break
+				case 'kicked':
+					navigate('/?removed=1')
 					break
 				case 'directMessage':
 					break
@@ -88,5 +123,5 @@ export default function useRoom({
 		[roomState.users, websocket.id]
 	)
 
-	return { identity, otherUsers, websocket, roomState }
+	return { identity, otherUsers, websocket, roomState, deniedReason, lastError }
 }

@@ -11,6 +11,7 @@ export type Env = {
 	FEEDBACK_STORAGE?: KVNamespace
 	TURN_SERVICE_ID?: string
 	TURN_SERVICE_TOKEN?: string
+	HOST_PASSWORD?: string
 	TRACE_LINK?: string
 	API_EXTRA_PARAMS?: string
 	MAX_WEBCAM_FRAMERATE?: string

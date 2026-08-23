@@ -59,5 +59,6 @@ enabled = true
 
 # The necessary secrets are:
 # - CALLS_APP_SECRET
+# - HOST_PASSWORD (optional — required only to enable host features)
 # Run `echo <VALUE> | wrangler secret put <NAME>` for each of these
 

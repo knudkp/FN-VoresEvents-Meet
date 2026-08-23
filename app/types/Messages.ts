@@ -8,6 +8,7 @@ export type User = {
 	raisedHand: boolean
 	speaking: boolean
 	joined: boolean
+	isHost?: boolean
 	tracks: {
 		audio?: string
 		audioEnabled?: boolean
@@ -19,9 +20,20 @@ export type User = {
 	}
 }
 
+export type ChatMessage = {
+	id: string
+	fromId: string
+	from: string
+	message: string
+	sentAt: number
+}
+
 export type RoomState = {
 	meetingId?: string
 	users: User[]
+	roomLocked: boolean
+	chatEnabled: boolean
+	chatMessages: ChatMessage[]
 	ai: {
 		enabled: boolean
 		controllingUser?: string
@@ -30,6 +42,14 @@ export type RoomState = {
 	}
 }
 
+export type KnownErrorCode =
+	| 'not-authorized'
+	| 'invalid-host-password'
+	| 'host-password-not-configured'
+	| 'room-locked'
+	| 'chat-disabled'
+	| 'chat-message-too-long'
+
 export type ServerMessage =
 	| {
 			type: 'roomState'
@@ -37,7 +57,7 @@ export type ServerMessage =
 	  }
 	| {
 			type: 'error'
-			error?: string
+			error?: KnownErrorCode | string
 	  }
 	| {
 			type: 'directMessage'
@@ -46,6 +66,9 @@ export type ServerMessage =
 	  }
 	| {
 			type: 'muteMic'
+	  }
+	| {
+			type: 'kicked'
 	  }
 	| {
 			type: 'partyserver-pong'
@@ -72,6 +95,29 @@ export type ClientMessage =
 	| {
 			type: 'muteUser'
 			id: string
+	  }
+	| {
+			type: 'muteAll'
+	  }
+	| {
+			type: 'kickUser'
+			id: string
+	  }
+	| {
+			type: 'claimHost'
+			password: string
+	  }
+	| {
+			type: 'lockRoom'
+			locked: boolean
+	  }
+	| {
+			type: 'toggleChat'
+			enabled: boolean
+	  }
+	| {
+			type: 'chatMessage'
+			message: string
 	  }
 	| {
 			type: 'userLeft'

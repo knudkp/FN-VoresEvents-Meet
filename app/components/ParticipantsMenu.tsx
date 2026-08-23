@@ -8,6 +8,7 @@ import { AudioIndicator } from './AudioIndicator'
 import { Button } from './Button'
 import { Dialog, DialogContent, DialogOverlay, Portal, Trigger } from './Dialog'
 import { Icon } from './Icon/Icon'
+import { KickUserButton } from './KickUserButton'
 import { MuteUserButton } from './MuteUserButton'
 import { OptionalLink } from './OptionalLink'
 import { usePulledAudioTrack } from './PullAudioTracks'
@@ -50,7 +51,7 @@ const UserListItem: FC<{
 				</div>
 			)}
 			<MuteUserButton user={user} />
-		</li>
+			<KickUserButton user={user} />
 	)
 }
 

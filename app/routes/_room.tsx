@@ -101,6 +101,16 @@ function RoomPreparation(props: {
 	const userMedia = useUserMedia(props)
 	const room = useRoom({ roomName, userMedia })
 
+	if (!room.roomState.meetingId && room.deniedReason === 'room-locked') {
+		return (
+			<div className="grid place-items-center h-full p-4 text-center">
+				<p className="text-zinc-500 dark:text-zinc-400">
+					Dette møde er låst af værten.
+				</p>
+			</div>
+		)
+	}
+
 	return room.roomState.meetingId ? (
 		<Room room={room} userMedia={userMedia} />
 	) : (

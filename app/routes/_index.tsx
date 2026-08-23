@@ -1,6 +1,11 @@
 import type { ActionFunction, LoaderFunctionArgs } from '@remix-run/cloudflare'
 import { json, redirect } from '@remix-run/cloudflare'
-import { Form, useLoaderData, useNavigate } from '@remix-run/react'
+import {
+	Form,
+	useLoaderData,
+	useNavigate,
+	useSearchParams,
+} from '@remix-run/react'
 import { nanoid } from 'nanoid'
 import invariant from 'tiny-invariant'
 import { Button, ButtonLink } from '~/components/Button'
@@ -83,12 +88,19 @@ export default function Index() {
 	const { username, usedAccess } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const { data } = useUserMetadata(username)
+	const [searchParams] = useSearchParams()
+	const wasRemoved = searchParams.get('removed') === '1'
 
 	return (
 		<div className="flex min-h-full flex-col md:flex-row">
 			<BrandPanel />
 			<div className="flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
 				<div className="w-full max-w-sm">
+					{wasRemoved && (
+						<div className="mb-6 rounded-md bg-red-100 p-3 text-sm text-red-800">
+							Du blev fjernet fra mødet af værten.
+						</div>
+					)}
 					<h2 className="text-2xl font-bold text-[#0b565b]">Klar til møde</h2>
 					<div className="mb-6 mt-1 flex items-center justify-between gap-3">
 						<p className="text-sm text-zinc-500">

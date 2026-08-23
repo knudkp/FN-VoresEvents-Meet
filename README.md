@@ -23,6 +23,7 @@ Put these variables into `.dev.vars`
 ```
 CALLS_APP_ID=<APP_ID_GOES_HERE>
 CALLS_APP_SECRET=<SECRET_GOES_HERE>
+HOST_PASSWORD=<CHOOSE_A_STRONG_SHARED_PASSWORD>
 ```
 
 ### Optional variables
@@ -32,6 +33,7 @@ The following variables are optional:
 - `MAX_WEBCAM_BITRATE` (default `1200000`): the maximum bitrate for each meeting participant's webcam.
 - `MAX_WEBCAM_FRAMERATE` (default: `24`): the maximum number of frames per second for each meeting participant's webcam.
 - `MAX_WEBCAM_QUALITY_LEVEL` (default `1080`): the maximum resolution for each meeting participant's webcam, based on the smallest dimension (i.e. the default is 1080p).
+- `HOST_PASSWORD` (no default — host features disabled until set): a shared password. Anyone who enters it (via "Bliv vært" in the in-call menu) becomes host of the room they're in, unlocking host-only controls (mute all, remove participants, lock the room, toggle chat). This is one password for the entire deployment, not per-room.
 
 To customize these variables, place replacement values in `.dev.vars` (for development) and in the `[vars]` section of `wrangler.toml` (for the deployment).
 
@@ -67,6 +69,8 @@ echo REPLACE_WITH_YOUR_SECRET | wrangler secret put CALLS_APP_SECRET
 ```
 
 4. Optionally, you can also use [Cloudflare's TURN Service](https://developers.cloudflare.com/calls/turn/) by setting the `TURN_SERVICE_ID` variable in `wrangler.toml` and `TURN_SERVICE_TOKEN` secret using `wrangler secret put TURN_SERVICE_TOKEN`
+
+4b. Optionally, set a host password to enable host controls (mute all, remove participants, lock the room, toggle chat) using `wrangler secret put HOST_PASSWORD`
 
 5. Also optionally, you can include `OPENAI_MODEL_ENDPOINT` and `OPENAI_API_TOKEN` to use OpenAI's [Realtime API with WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc) to [invite AI](https://www.youtube.com/watch?v=AzMpyAbZfZQ) to join your meeting.
 

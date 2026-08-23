@@ -23,6 +23,9 @@ export const MuteUserButton: FC<MuteUserButtonProps> = ({
 	const { room } = useRoomContext()
 	const { data } = useUserMetadata(user.name)
 
+	const isSelf = user.id === room.identity?.id
+	if (!isSelf && !room.identity?.isHost) return null
+
 	if (user.tracks.audioUnavailable) {
 		return (
 			<Tooltip content="Mic is unavailable. User cannot unmute.">
