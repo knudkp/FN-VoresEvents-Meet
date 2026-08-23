@@ -109,12 +109,22 @@ export default function Index() {
 							Logget ind som {data?.displayName}
 						</p>
 						{!usedAccess && (
-							<a
-								className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-								href="/set-username"
-							>
-								Skift
-							</a>
+							<div className="flex items-center gap-3">
+								<a
+									className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
+									href="/set-username"
+								>
+									Skift
+								</a>
+								<Form method="post" action="/logout">
+									<button
+										type="submit"
+										className="text-sm text-red-600 underline hover:text-red-800"
+									>
+										Slet
+									</button>
+								</Form>
+							</div>
 						)}
 					</div>
 
