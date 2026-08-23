@@ -1,18 +1,22 @@
-# Welcome to Cloudflare Meet
+# fleksMeet
 
-(Cloudflare Meet was formerly known as Orange Meets)
+fleksMeet is a video meeting app for Fleksjobbernetværket, built on
+[Cloudflare Realtime SFU](https://developers.cloudflare.com/realtime/). It's a
+fork of Cloudflare's "Meet" demo (formerly "Orange Meets") — to build your own
+WebRTC application on Cloudflare Realtime from scratch, see the
+[Cloudflare Dashboard](https://dash.cloudflare.com/?to=/:account/realtime) or
+the simpler [realtime-examples](https://github.com/cloudflare/realtime-examples).
 
-Meet is a demo application built using [Cloudflare Realtime SFU](https://developers.cloudflare.com/realtime/). To build your own WebRTC application using Cloudflare Realtime, get started in the [Cloudflare Dashboard](https://dash.cloudflare.com/?to=/:account/realtime).
+For engineers working on this repo:
 
-Simpler examples can be found [here](https://github.com/cloudflare/realtime-examples).
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — deep technical reference: request
+  flow, the Durable Object that runs each meeting, the full D1 schema,
+  auth/session/password design, the WebRTC signaling path, deployment
+  pipeline. Read this before making non-trivial changes.
+- **[CLAUDE.md](CLAUDE.md)** — running log of what changed and why, kept
+  up to date after each work session (AI-assisted or not).
 
-[Try the demo here!](https://demo.orange.cloudflare.dev)
-
-![A screenshot showing a room in Meet](orange-meets.png)
-
-## Architecture Diagram
-
-![Diagram of Meet architecture](architecture.png)
+![fleksMeet's welcome screen](public/og-image.png)
 
 ## Variables
 
@@ -39,6 +43,28 @@ The following variables are optional:
 
 To customize these variables, place replacement values in `.dev.vars` (for development) and in the `[vars]` section of `wrangler.toml` (for the deployment).
 
+### Welcome screen
+
+Visiting the site (`/`) always shows fleksMeet's own welcome screen — it
+never redirects away to another URL, even for a first-time visitor. Two
+buttons choose the flow:
+
+- **Fortsæt som gæst** — enter a display name and join. Guest display
+  names are limited to 10 characters, letters only (`A-Za-z` plus Danish
+  `æøå`), with optional digits at the very end (e.g. `Knud99`). A
+  lowercase first letter is silently capitalized rather than rejected;
+  anything else invalid shows an inline error. Guests may only join a
+  meeting that's already active — they can't spin one up by typing an
+  arbitrary room name.
+- **Som admin** — username + password, for both the shared
+  `ADMIN_USERNAME`/`HOST_PASSWORD` login and real user accounts (see
+  "User accounts" below).
+
+A small "?" icon in the top-right corner opens a one-line help popup.
+`/set-username` renders the identical screen and is still the gate a
+protected URL (e.g. a direct room link) redirects to when no one is
+logged in yet.
+
 ### Admin panel
 
 Visit `/admin` and log in with `ADMIN_USERNAME` + `HOST_PASSWORD` (both required — `/admin/login` shows "not configured" without them) to:
@@ -49,11 +75,31 @@ Visit `/admin` and log in with `ADMIN_USERNAME` + `HOST_PASSWORD` (both required
 
 Like the other D1-backed features above, this needs a bound database (`wrangler d1 create`, then fill in the `[[d1_databases]]` block in `wrangler.toml`, then `npm run db:migrate`) — without one, `/admin/login` still works but the dashboard shows empty lists and room pre-configuration is silently skipped.
 
+If no admin account exists yet, `/admin/setup` creates the first one directly (no env-var secrets needed) — it locks itself once an admin exists.
+
 ### User accounts
 
-From the admin dashboard, admin can also create named accounts with a role — `Admin`, `Ordstyrer` (moderator), or `Bruger` (regular user) — by entering a username, email, and role. The person gets emailed a one-time link to `/set-password` where they choose their own display name and password; until they do, the account shows as "Afventer aktivering" in the dashboard. Once activated, they can log in from the entry screen's "Log ind" tab with that username/password. A `moderator` account is automatically host in every meeting they join (no manual "Bliv vært" needed); an `admin` account also gets `/admin` access on login.
+From the admin dashboard, admin can also create named accounts with a role — `Admin`, `Ordstyrer` (moderator), or `Bruger` (regular user) — by entering a username, email, and role. The person gets emailed a one-time link to `/set-password` where they choose their own display name and password; until they do, the account shows as "Afventer aktivering" in the dashboard. Once activated, they can log in from the entry screen's "Som admin" tab with that username/password. A `moderator` account is automatically host in every meeting they join (no manual "Bliv vært" needed); an `admin` account also gets `/admin` access on login.
 
 Sending the invite email uses [Resend](https://resend.com) — set `RESEND_API_KEY` (and optionally `RESEND_FROM_EMAIL`, which needs a domain verified in Resend; without it, email sends from Resend's shared test address). If `RESEND_API_KEY` isn't set, or sending fails, the dashboard shows the raw invite link instead so it can be shared manually.
+
+### Naming and versioning
+
+The product name shown to users ("fleksMeet", in the page title, welcome
+screen, webmanifest, share preview) and its version number both live in
+[app/utils/appInfo.ts](app/utils/appInfo.ts) — bump `APP_VERSION` there
+when shipping a notable change (see `CLAUDE.md`'s log for the convention).
+This is separate from the `© ... Vores Events - Fleksjobber Netværket`
+footer text, which is a company/organization attribution, not the product
+name.
+
+### Sharing the link
+
+The site has Open Graph / Twitter Card meta tags (see `app/root.tsx`) so
+sharing the URL on LinkedIn, Slack, etc. shows a real preview card —
+title, description, and [public/og-image.png](public/og-image.png).
+Regenerate that image if the brand colors, logo, or name change (it's a
+static screenshot, not rendered live).
 
 ## Development
 
@@ -63,6 +109,10 @@ npm run dev
 ```
 
 Open up [http://127.0.0.1:8787](http://127.0.0.1:8787) and you should be ready to go!
+
+Before committing, run `npm run check` (prettier + eslint + typecheck +
+tests) — CI runs the same steps and stops at the first failure, so a
+lint issue silently hides whatever typecheck/test problems come after it.
 
 ## Deployment
 
@@ -101,3 +151,8 @@ echo REPLACE_WITH_YOUR_SECRET | wrangler secret put CALLS_APP_SECRET
 ```sh
 npm run deploy
 ```
+
+In this project's actual deployment, pushing to `main` on GitHub also
+triggers a Cloudflare Workers Build automatically (separate from, and not
+gated by, the GitHub Actions checks) — see **ARCHITECTURE.md → Deployment
+pipeline** for details.

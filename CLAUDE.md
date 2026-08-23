@@ -7,9 +7,12 @@ hvor vi tilføjer/ændrer noget** — kort, dato + hvad + hvorfor.
 ## Hvad er dette
 
 Fork af Cloudflare "Orange Meets" (WebRTC-mødeapp, Remix + Cloudflare
-Workers), tilpasset til Fleksjobbernetværket ("VoresEvents Meet"). Original
-feature-dokumentation (env vars, deployment) står i [README.md](README.md) —
-den er god og opdateret, dupliker den ikke her.
+Workers), tilpasset til Fleksjobbernetværket som **fleksMeet**.
+Feature-/deployment-dokumentation står i [README.md](README.md); en fuld
+teknisk gennemgang (datamodel, Durable Object-protokol, auth, deploy-
+pipeline, "hele molevitten") står i
+[ARCHITECTURE.md](ARCHITECTURE.md) — begge er opdaterede, dupliker dem
+ikke her. Hold begge ajour når noget af det de beskriver ændrer sig.
 
 ## Stack
 
@@ -91,6 +94,18 @@ typecheck-fejl kan ligge skjult sådan.
 
 ## Log
 
+- **2026-08-23**: Opdaterede README.md (fleksMeet-branding, velkomstskærm,
+  navngivning/versionering, delingsbillede, henvisning til
+  ARCHITECTURE.md) og oprettede
+  [ARCHITECTURE.md](ARCHITECTURE.md) — en ultra-teknisk gennemgang af
+  hele systemet (data-lag, D1-skema, Durable Object-lagringsnøgler og
+  WebSocket-protokol, de to password-hash-ordninger, invite-token-flow,
+  Calls API-integration, E2EE/AI-features, rute-kort, env-variabler, og
+  en advarsel om at `wrangler.{development,staging,production,public,e2ee}.toml`
+  er efterladte upstream-configs der IKKE bruges af denne deployment
+  (kun base `wrangler.toml` er reel). Skrevet ved at læse kildekoden
+  direkte (ChatRoom.server.ts, schema.ts, alle auth/session/hash-filer,
+  routes) — ikke gættet.
 - **2026-08-23**: Tilføjede Open Graph/Twitter-metatags (delingsbillede),
   da brugeren delte URL'en på LinkedIn og savnede et billede. Nyt
   [public/og-image.png](public/og-image.png) (1200×630, samme
