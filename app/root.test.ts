@@ -126,7 +126,7 @@ describe('root loader', () => {
 	})
 
 	it('should redirect to /set-username if CF_Authorization Cookie is missing', async () => {
-		const request = new Request('https://orange.cloudflare.dev', {})
+		const request = new Request('https://orange.cloudflare.dev/some-room', {})
 		let redirect = null
 		try {
 			const response = await loader({
@@ -140,6 +140,23 @@ describe('root loader', () => {
 			redirect = r
 		}
 		expect(redirect?.status).toBe(302)
+	})
+
+	it('should NOT redirect away from / even without a username, so the address bar always shows the main URL', async () => {
+		const request = new Request('https://orange.cloudflare.dev/', {})
+		let redirect = null
+		try {
+			const response = await loader({
+				request,
+				context: { env: {} } as any,
+				params: {},
+			})
+			expect(response.status).not.equals(302)
+		} catch (r) {
+			if (!(r instanceof Response)) throw r
+			redirect = r
+		}
+		expect(redirect).toBe(null)
 	})
 
 	it('should NOT redirect to /set-username if CF_Authorization Cookie is missing but username is set', async () => {

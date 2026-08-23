@@ -35,6 +35,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const url = new URL(request.url)
 	const username = await getUsername(request)
 	const skipUsernameGate =
+		url.pathname === '/' ||
 		url.pathname === '/set-username' ||
 		url.pathname === '/set-password' ||
 		url.pathname.startsWith('/admin')

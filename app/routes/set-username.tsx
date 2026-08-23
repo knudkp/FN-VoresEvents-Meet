@@ -1,18 +1,11 @@
-import { json, redirect, type ActionFunctionArgs } from '@remix-run/cloudflare'
-import { Form, useActionData } from '@remix-run/react'
-import { eq } from 'drizzle-orm'
-import { useState } from 'react'
-import { getDb, Users } from 'schema'
+import { type ActionFunctionArgs } from '@remix-run/cloudflare'
+import { useActionData } from '@remix-run/react'
 import invariant from 'tiny-invariant'
-import { commitAdminSession, getAdminSession } from '~/adminSession'
-import { Button } from '~/components/Button'
+import { AuthChoiceForm } from '~/components/AuthChoiceForm'
 import { Disclaimer } from '~/components/Disclaimer'
-import { Input } from '~/components/Input'
-import { Label } from '~/components/Label'
-import { commitSession, getSession } from '~/session'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
 import { setUsername } from '~/utils/getUsername.server'
-import { verifyUserPassword } from '~/utils/passwordHash.server'
+import { handleLoginIntent } from '~/utils/loginAction.server'
 import { safeRedirect } from '~/utils/safeReturnUrl'
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
@@ -27,64 +20,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 	const intent = formData.get('intent')
 
 	if (intent === 'login') {
-		const loginUsername = formData.get('loginUsername')
-		const password = formData.get('password')
-		invariant(typeof loginUsername === 'string')
-		invariant(typeof password === 'string')
-		const trimmedLoginUsername = loginUsername.trim()
-
-		const isMaster =
-			!!context.env.ADMIN_USERNAME &&
-			!!context.env.HOST_PASSWORD &&
-			trimmedLoginUsername.toLowerCase() ===
-				context.env.ADMIN_USERNAME.trim().toLowerCase() &&
-			password === context.env.HOST_PASSWORD
-
-		let displayName: string | null = null
-		let role: 'admin' | 'moderator' | 'user' | null = null
-
-		if (isMaster) {
-			displayName = trimmedLoginUsername
-			role = 'admin'
-		} else {
-			const db = getDb(context)
-			if (db) {
-				const [user] = await db
-					.select()
-					.from(Users)
-					.where(eq(Users.username, trimmedLoginUsername))
-				if (user?.passwordHash && user.passwordSalt) {
-					const valid = await verifyUserPassword(
-						password,
-						user.passwordHash,
-						user.passwordSalt
-					)
-					if (valid) {
-						displayName = user.displayName ?? user.username
-						role = user.role
-					}
-				}
-			}
-		}
-
-		if (!displayName) {
-			return json(
-				{ error: 'Forkert brugernavn eller adgangskode.' },
-				{ status: 400 }
-			)
-		}
-
-		const session = await getSession(request.headers.get('Cookie'))
-		session.set('username', displayName)
-		session.set('role', role)
-		const headers = new Headers()
-		headers.append('Set-Cookie', await commitSession(session))
-		if (role === 'admin') {
-			const adminSession = await getAdminSession(request.headers.get('Cookie'))
-			adminSession.set('isAdmin', true)
-			headers.append('Set-Cookie', await commitAdminSession(adminSession))
-		}
-		return redirect(returnUrl, { headers })
+		return handleLoginIntent(formData, request, context, returnUrl)
 	}
 
 	const username = formData.get('username')
@@ -147,7 +83,6 @@ function BrandPanel() {
 }
 
 export default function SetUsername() {
-	const [mode, setMode] = useState<'guest' | 'login'>('guest')
 	const actionData = useActionData<typeof action>()
 
 	return (
@@ -156,89 +91,7 @@ export default function SetUsername() {
 			<div className="flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
 				<div className="w-full max-w-sm">
 					<h2 className="text-2xl font-bold text-[#0b565b]">Velkommen</h2>
-					<div className="mb-6 mt-2 flex gap-4 text-sm">
-						<button
-							type="button"
-							onClick={() => setMode('guest')}
-							className={
-								mode === 'guest'
-									? 'font-medium text-[#0b565b] underline'
-									: 'text-zinc-500 underline'
-							}
-						>
-							Fortsæt som gæst
-						</button>
-						<button
-							type="button"
-							onClick={() => setMode('login')}
-							className={
-								mode === 'login'
-									? 'font-medium text-[#0b565b] underline'
-									: 'text-zinc-500 underline'
-							}
-						>
-							Log ind
-						</button>
-					</div>
-
-					{mode === 'guest' ? (
-						<Form method="post" className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="username">Visningsnavn</Label>
-								<Input
-									autoComplete="off"
-									autoFocus
-									required
-									type="text"
-									id="username"
-									name="username"
-									placeholder="F.eks. Knud"
-									className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
-								/>
-							</div>
-							<Button
-								type="submit"
-								className="w-full border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
-							>
-								Fortsæt
-							</Button>
-						</Form>
-					) : (
-						<Form method="post" className="space-y-4">
-							<input type="hidden" name="intent" value="login" />
-							<div className="space-y-2">
-								<Label htmlFor="loginUsername">Brugernavn</Label>
-								<Input
-									autoComplete="off"
-									autoFocus
-									required
-									type="text"
-									id="loginUsername"
-									name="loginUsername"
-									className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="password">Adgangskode</Label>
-								<Input
-									required
-									type="password"
-									id="password"
-									name="password"
-									className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
-								/>
-							</div>
-							{actionData && 'error' in actionData && (
-								<p className="text-sm text-red-500">{actionData.error}</p>
-							)}
-							<Button
-								type="submit"
-								className="w-full border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
-							>
-								Log ind
-							</Button>
-						</Form>
-					)}
+					<AuthChoiceForm error={actionData?.error} />
 					<Disclaimer className="mt-8" />
 				</div>
 			</div>

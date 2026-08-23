@@ -16,53 +16,66 @@ import { useState } from 'react'
 import { getDb, Meetings } from 'schema'
 import invariant from 'tiny-invariant'
 import { AdminLoginDialog } from '~/components/AdminLoginDialog'
+import { AuthChoiceForm } from '~/components/AuthChoiceForm'
 import { Button } from '~/components/Button'
 import { Disclaimer } from '~/components/Disclaimer'
 import { Input } from '~/components/Input'
 import { Label } from '~/components/Label'
 import { useUserMetadata } from '~/hooks/useUserMetadata'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
-import getUsername, { getUserRole } from '~/utils/getUsername.server'
+import getUsername, { getUserRole, setUsername } from '~/utils/getUsername.server'
+import { handleLoginIntent } from '~/utils/loginAction.server'
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const directoryUrl = context.USER_DIRECTORY_URL
 	const username = await getUsername(request)
-	invariant(username)
 	const usedAccess = request.headers.has(ACCESS_AUTHENTICATED_USER_EMAIL_HEADER)
 	const role = await getUserRole(request)
 	return json({ username, usedAccess, directoryUrl, isGuest: role === null })
 }
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
-	const room = (await request.formData()).get('room')
-	invariant(typeof room === 'string')
-	const roomName = room.replace(/ /g, '-')
+	const formData = await request.formData()
 
-	const role = await getUserRole(request)
-	if (!role) {
-		// guests may only join a meeting that's already active, never
-		// spin up a new one by typing an arbitrary name
-		const db = getDb(context)
-		const meeting = db
-			? (
-					await db
-						.select()
-						.from(Meetings)
-						.where(and(eq(Meetings.roomName, roomName), isNull(Meetings.ended)))
-				)[0]
-			: undefined
-		if (!meeting) {
-			return json(
-				{
-					error:
-						'Dette møde findes ikke. Log ud og prøv igen, eller kontakt værten.',
-				},
-				{ status: 400 }
-			)
+	const room = formData.get('room')
+	if (typeof room === 'string') {
+		const roomName = room.replace(/ /g, '-')
+
+		const role = await getUserRole(request)
+		if (!role) {
+			// guests may only join a meeting that's already active, never
+			// spin up a new one by typing an arbitrary name
+			const db = getDb(context)
+			const meeting = db
+				? (
+						await db
+							.select()
+							.from(Meetings)
+							.where(and(eq(Meetings.roomName, roomName), isNull(Meetings.ended)))
+					)[0]
+				: undefined
+			if (!meeting) {
+				return json(
+					{
+						error:
+							'Dette møde findes ikke. Log ud og prøv igen, eller kontakt værten.',
+					},
+					{ status: 400 }
+				)
+			}
 		}
+
+		return redirect(roomName)
 	}
 
-	return redirect(roomName)
+	const intent = formData.get('intent')
+	if (intent === 'login') {
+		return handleLoginIntent(formData, request, context, '/')
+	}
+
+	const username = formData.get('username')
+	invariant(typeof username === 'string')
+	return setUsername(username, request, '/')
 }
 
 function BrandPanel() {
@@ -121,12 +134,49 @@ function BrandPanel() {
 
 export default function Index() {
 	const { username, usedAccess, isGuest } = useLoaderData<typeof loader>()
+	const actionData = useActionData<typeof action>()
+
+	if (!username) {
+		return (
+			<div className="flex min-h-full flex-col md:flex-row">
+				<BrandPanel />
+				<div className="flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
+					<div className="w-full max-w-sm">
+						<h2 className="text-2xl font-bold text-[#0b565b]">Velkommen</h2>
+						<AuthChoiceForm error={actionData?.error} />
+						<Disclaimer className="mt-8" />
+					</div>
+				</div>
+			</div>
+		)
+	}
+
+	return (
+		<Dashboard
+			username={username}
+			usedAccess={usedAccess}
+			isGuest={isGuest}
+			actionData={actionData}
+		/>
+	)
+}
+
+function Dashboard({
+	username,
+	usedAccess,
+	isGuest,
+	actionData,
+}: {
+	username: string
+	usedAccess: boolean
+	isGuest: boolean
+	actionData: { error?: string } | undefined
+}) {
 	const navigate = useNavigate()
 	const { data } = useUserMetadata(username)
 	const [searchParams] = useSearchParams()
 	const wasRemoved = searchParams.get('removed') === '1'
 	const [newRoomName, setNewRoomName] = useState(() => nanoid(8))
-	const actionData = useActionData<typeof action>()
 
 	return (
 		<div className="flex min-h-full flex-col md:flex-row">
