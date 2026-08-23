@@ -22,6 +22,13 @@
 			"when": 1755950000000,
 			"tag": "0002_solid_sentinel",
 			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1756000000000,
+			"tag": "0003_curly_paladin",
+			"breakpoints": true
 		}
 	]
 }

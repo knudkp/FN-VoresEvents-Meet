@@ -35,6 +35,7 @@ export const Meetings = sqliteTable('Meetings', {
 	peakUserCount: integer('userCount').notNull(),
 	ended: text('ended'),
 	hostPasswordHash: text('hostPasswordHash'),
+	roomName: text('roomName'),
 })
 
 export const ChatMessages = sqliteTable('ChatMessages', {
@@ -54,6 +55,19 @@ export const AdminAuditLog = sqliteTable('AdminAuditLog', {
 	actorName: text('actorName').notNull(),
 	targetId: text('targetId'),
 	targetName: text('targetName'),
+})
+
+export const Rooms = sqliteTable('Rooms', {
+	...metadataColumns,
+	id: text('id').primaryKey(),
+	lockedByDefault: integer('lockedByDefault', { mode: 'boolean' })
+		.notNull()
+		.default(false),
+	chatEnabledByDefault: integer('chatEnabledByDefault', { mode: 'boolean' })
+		.notNull()
+		.default(true),
+	presetHostPasswordHash: text('presetHostPasswordHash'),
+	reservedBy: text('reservedBy').notNull(),
 })
 
 export function getDb(context: { env: Env }) {

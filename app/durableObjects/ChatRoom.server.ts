@@ -19,8 +19,15 @@ import {
 	type ConnectionContext,
 	type WSMessage,
 } from 'partyserver'
-import { AdminAuditLog, ChatMessages as ChatMessagesTable, getDb, Meetings } from 'schema'
+import {
+	AdminAuditLog,
+	ChatMessages as ChatMessagesTable,
+	getDb,
+	Meetings,
+	Rooms,
+} from 'schema'
 import invariant from 'tiny-invariant'
+import { hashPassword } from '~/utils/hashPassword.server'
 import { log } from '~/utils/logging'
 import {
 	CallsNewSession,
@@ -173,12 +180,27 @@ export class ChatRoom extends Server<Env> {
 		const meetingId = crypto.randomUUID()
 		await this.ctx.storage.put('meetingId', meetingId)
 		log({ eventName: 'startingMeeting', meetingId })
+
+		let roomPreset = null
+		if (this.db) {
+			;[roomPreset] = await this.db
+				.select()
+				.from(Rooms)
+				.where(eq(Rooms.id, this.name))
+		}
+		if (roomPreset) {
+			await this.ctx.storage.put('roomLocked', roomPreset.lockedByDefault)
+			await this.ctx.storage.put('chatEnabled', roomPreset.chatEnabledByDefault)
+		}
+
 		if (this.db) {
 			return this.db
 				.insert(Meetings)
 				.values({
 					id: meetingId,
 					peakUserCount: 1,
+					hostPasswordHash: roomPreset?.presetHostPasswordHash,
+					roomName: this.name,
 				})
 				.returning()
 				.then(([m]) => m)
@@ -288,16 +310,6 @@ export class ChatRoom extends Server<Env> {
 		return this.broadcastMessage(roomState)
 	}
 
-	async hashPassword(password: string): Promise<string> {
-		const digest = await crypto.subtle.digest(
-			'SHA-256',
-			new TextEncoder().encode(password)
-		)
-		return [...new Uint8Array(digest)]
-			.map((b) => b.toString(16).padStart(2, '0'))
-			.join('')
-	}
-
 	async logAdminAction(
 		meetingId: string | undefined,
 		action: string,
@@ -315,6 +327,94 @@ export class ChatRoom extends Server<Env> {
 			targetId,
 			targetName,
 		})
+	}
+
+	// The following perform* methods hold the actual admin-action logic,
+	// shared between the websocket onMessage cases (a host acting from
+	// inside the room) and the onRequest admin HTTP endpoints (an admin
+	// acting remotely from the /admin dashboard, with no live connection
+	// of their own).
+
+	async performLock(locked: boolean, actorId: string, actorName: string) {
+		const meetingId = await this.getMeetingId()
+		await this.ctx.storage.put('roomLocked', locked)
+		await this.logAdminAction(
+			meetingId,
+			locked ? 'lockRoom' : 'unlockRoom',
+			actorId,
+			actorName
+		)
+		await this.broadcastRoomState()
+	}
+
+	async performToggleChat(enabled: boolean, actorId: string, actorName: string) {
+		const meetingId = await this.getMeetingId()
+		await this.ctx.storage.put('chatEnabled', enabled)
+		await this.logAdminAction(
+			meetingId,
+			enabled ? 'enableChat' : 'disableChat',
+			actorId,
+			actorName
+		)
+		await this.broadcastRoomState()
+	}
+
+	async performMuteAll(actorId: string, actorName: string) {
+		const meetingId = await this.getMeetingId()
+		for (const otherConnection of this.getConnections<User>()) {
+			if (otherConnection.id === actorId) continue
+			const otherUser = await this.ctx.storage.get<User>(
+				`session-${otherConnection.id}`
+			)
+			if (!otherUser) continue
+			await this.ctx.storage.put(`session-${otherConnection.id}`, {
+				...otherUser,
+				tracks: {
+					...otherUser.tracks,
+					audioEnabled: false,
+				},
+			})
+			this.sendMessage(otherConnection, { type: 'muteMic' })
+		}
+		await this.logAdminAction(meetingId, 'muteAll', actorId, actorName)
+		await this.broadcastRoomState()
+	}
+
+	async performKick(
+		targetId: string,
+		actorId: string,
+		actorName: string
+	): Promise<boolean> {
+		const meetingId = await this.getMeetingId()
+		const targetConnection = [...this.getConnections<User>()].find(
+			(c) => c.id === targetId
+		)
+		if (!targetConnection) {
+			console.warn(`User with id "${targetId}" not found, cannot kick user`)
+			return false
+		}
+		const targetUser = await this.ctx.storage.get<User>(
+			`session-${targetId}`
+		)
+		this.sendMessage(targetConnection, { type: 'kicked' })
+		targetConnection.close(4001, 'Removed by host')
+		await this.ctx.storage.delete(`session-${targetId}`).catch(() => {
+			console.warn(`Failed to delete session session-${targetId} on kick`)
+		})
+		await this.ctx.storage.delete(`heartbeat-${targetId}`).catch(() => {
+			console.warn(`Failed to delete session heartbeat-${targetId} on kick`)
+		})
+		this.userLeftNotification(targetId)
+		await this.logAdminAction(
+			meetingId,
+			'kickUser',
+			actorId,
+			actorName,
+			targetId,
+			targetUser?.name
+		)
+		await this.broadcastRoomState()
+		return true
 	}
 
 	// Single source of truth for host permission checks. Sends an
@@ -464,72 +564,24 @@ export class ChatRoom extends Server<Env> {
 
 				case 'muteAll': {
 					if (!(await this.requireHost(connection, 'muteAll'))) break
-					for (const otherConnection of this.getConnections<User>()) {
-						if (otherConnection.id === connection.id) continue
-						const otherUser = await this.ctx.storage.get<User>(
-							`session-${otherConnection.id}`
-						)
-						if (!otherUser) continue
-						await this.ctx.storage.put(`session-${otherConnection.id}`, {
-							...otherUser,
-							tracks: {
-								...otherUser.tracks,
-								audioEnabled: false,
-							},
-						})
-						this.sendMessage(otherConnection, { type: 'muteMic' })
-					}
 					const actor = await this.ctx.storage.get<User>(
 						`session-${connection.id}`
 					)
-					await this.logAdminAction(
-						meetingId,
-						'muteAll',
-						connection.id,
-						actor?.name ?? 'unknown'
-					)
-					await this.broadcastRoomState()
+					await this.performMuteAll(connection.id, actor?.name ?? 'unknown')
 					break
 				}
 
 				case 'kickUser': {
 					if (!(await this.requireHost(connection, 'kickUser'))) break
 					if (data.id === connection.id) break
-					const targetConnection = [...this.getConnections<User>()].find(
-						(c) => c.id === data.id
-					)
-					if (!targetConnection) {
-						console.warn(
-							`User with id "${data.id}" not found, cannot kick user`
-						)
-						break
-					}
-					const targetUser = await this.ctx.storage.get<User>(
-						`session-${data.id}`
-					)
 					const actor = await this.ctx.storage.get<User>(
 						`session-${connection.id}`
 					)
-					this.sendMessage(targetConnection, { type: 'kicked' })
-					targetConnection.close(4001, 'Removed by host')
-					await this.ctx.storage.delete(`session-${data.id}`).catch(() => {
-						console.warn(`Failed to delete session session-${data.id} on kick`)
-					})
-					await this.ctx.storage.delete(`heartbeat-${data.id}`).catch(() => {
-						console.warn(
-							`Failed to delete session heartbeat-${data.id} on kick`
-						)
-					})
-					this.userLeftNotification(data.id)
-					await this.logAdminAction(
-						meetingId,
-						'kickUser',
-						connection.id,
-						actor?.name ?? 'unknown',
+					await this.performKick(
 						data.id,
-						targetUser?.name
+						connection.id,
+						actor?.name ?? 'unknown'
 					)
-					await this.broadcastRoomState()
 					break
 				}
 
@@ -587,7 +639,7 @@ export class ChatRoom extends Server<Env> {
 							})
 							break
 						}
-						const passwordHash = await this.hashPassword(trimmedPassword)
+						const passwordHash = await hashPassword(trimmedPassword)
 						if (!meeting.hostPasswordHash) {
 							// First person to claim host for this meeting sets its password.
 							await this.db
@@ -629,33 +681,27 @@ export class ChatRoom extends Server<Env> {
 
 				case 'lockRoom': {
 					if (!(await this.requireHost(connection, 'lockRoom'))) break
-					await this.ctx.storage.put('roomLocked', data.locked)
 					const actor = await this.ctx.storage.get<User>(
 						`session-${connection.id}`
 					)
-					await this.logAdminAction(
-						meetingId,
-						data.locked ? 'lockRoom' : 'unlockRoom',
+					await this.performLock(
+						data.locked,
 						connection.id,
 						actor?.name ?? 'unknown'
 					)
-					await this.broadcastRoomState()
 					break
 				}
 
 				case 'toggleChat': {
 					if (!(await this.requireHost(connection, 'toggleChat'))) break
-					await this.ctx.storage.put('chatEnabled', data.enabled)
 					const actor = await this.ctx.storage.get<User>(
 						`session-${connection.id}`
 					)
-					await this.logAdminAction(
-						meetingId,
-						data.enabled ? 'enableChat' : 'disableChat',
+					await this.performToggleChat(
+						data.enabled,
 						connection.id,
 						actor?.name ?? 'unknown'
 					)
-					await this.broadcastRoomState()
 					break
 				}
 
@@ -918,6 +964,59 @@ export class ChatRoom extends Server<Env> {
 			})
 			this.broadcastRoomState()
 		})
+	}
+
+	// HTTP entry point for the /admin dashboard's remote room controls.
+	// Reached via a direct DO stub fetch (see app/routes/admin.rooms.$roomName.tsx),
+	// never from the public internet — the calling Remix action already
+	// verified the admin session before constructing the stub, so these
+	// endpoints don't re-check credentials themselves.
+	async onRequest(request: Request): Promise<Response> {
+		const { pathname } = new URL(request.url)
+
+		if (pathname === '/admin/state' && request.method === 'GET') {
+			const hostConnectionId =
+				await this.ctx.storage.get<string>('hostConnectionId')
+			const roomLocked =
+				(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
+			const chatEnabled =
+				(await this.ctx.storage.get<boolean>('chatEnabled')) ?? true
+			const users = [...(await this.getUsers()).values()].map((u) => ({
+				...u,
+				isHost: u.id === hostConnectionId,
+			}))
+			return Response.json({
+				meetingId: await this.getMeetingId(),
+				roomLocked,
+				chatEnabled,
+				users,
+			})
+		}
+
+		if (pathname === '/admin/lock' && request.method === 'POST') {
+			const { locked } = (await request.json()) as { locked: boolean }
+			await this.performLock(locked, 'admin', 'Admin')
+			return Response.json({ ok: true })
+		}
+
+		if (pathname === '/admin/toggle-chat' && request.method === 'POST') {
+			const { enabled } = (await request.json()) as { enabled: boolean }
+			await this.performToggleChat(enabled, 'admin', 'Admin')
+			return Response.json({ ok: true })
+		}
+
+		if (pathname === '/admin/mute-all' && request.method === 'POST') {
+			await this.performMuteAll('admin', 'Admin')
+			return Response.json({ ok: true })
+		}
+
+		if (pathname === '/admin/kick' && request.method === 'POST') {
+			const { id } = (await request.json()) as { id: string }
+			const kicked = await this.performKick(id, 'admin', 'Admin')
+			return Response.json({ ok: kicked })
+		}
+
+		return new Response('Not found', { status: 404 })
 	}
 
 	getUsers() {

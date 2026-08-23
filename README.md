@@ -39,6 +39,15 @@ The following variables are optional:
 
 To customize these variables, place replacement values in `.dev.vars` (for development) and in the `[vars]` section of `wrangler.toml` (for the deployment).
 
+### Admin panel
+
+Visit `/admin` and log in with `ADMIN_USERNAME` + `HOST_PASSWORD` (both required — `/admin/login` shows "not configured" without them) to:
+- pre-configure a room by name before anyone joins it (locked from start, chat off from start, a preset host password),
+- see configured rooms and recent/active meetings, and
+- remotely control any active meeting (lock/unlock, toggle chat, mute all, remove a participant) without joining it.
+
+Like the other D1-backed features above, this needs a bound database (`wrangler d1 create`, then fill in the `[[d1_databases]]` block in `wrangler.toml`, then `npm run db:migrate`) — without one, `/admin/login` still works but the dashboard shows empty lists and room pre-configuration is silently skipped.
+
 ## Development
 
 ```sh
