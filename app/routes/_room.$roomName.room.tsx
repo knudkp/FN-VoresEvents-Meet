@@ -14,6 +14,7 @@ import { ButtonLink } from '~/components/Button'
 import { CameraButton } from '~/components/CameraButton'
 import { ChatButton } from '~/components/ChatButton'
 import { ChatPanel } from '~/components/ChatPanel'
+import { ClaimHostButton } from '~/components/ClaimHostButton'
 import { CopyButton } from '~/components/CopyButton'
 import { HighPacketLossWarningsToast } from '~/components/HighPacketLossWarningsToast'
 import { IceDisconnectedToast } from '~/components/IceDisconnectedToast'
@@ -227,6 +228,7 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 						otherUsers={otherUsers}
 						className="hidden md:block"
 					></ParticipantsButton>
+					<ClaimHostButton />
 					<OverflowMenu bugReportsEnabled={bugReportsEnabled} />
 					<LeaveRoomButton
 						navigateToFeedbackPage={hasDb}

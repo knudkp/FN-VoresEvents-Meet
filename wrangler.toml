@@ -32,6 +32,8 @@ new_sqlite_classes = ["ChatRoom"]
 
 # The necessary secrets are:
 # - CALLS_APP_SECRET
+# - ADMIN_USERNAME (required to enable host features — "Bliv vært"
+#   needs this username plus a password)
 # - HOST_PASSWORD (optional — a master password that can claim host in
 #   any room; without it, host features still work via the per-meeting
 #   password set by whoever first claims host, once DB is bound above)

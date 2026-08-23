@@ -534,6 +534,25 @@ export class ChatRoom extends Server<Env> {
 				}
 
 				case 'claimHost': {
+					if (!this.env.ADMIN_USERNAME) {
+						this.sendMessage(connection, {
+							type: 'error',
+							error: 'host-password-not-configured',
+						})
+						break
+					}
+					const trimmedUsername = data.username.trim()
+					if (
+						trimmedUsername.toLowerCase() !==
+						this.env.ADMIN_USERNAME.trim().toLowerCase()
+					) {
+						this.sendMessage(connection, {
+							type: 'error',
+							error: 'invalid-host-password',
+						})
+						break
+					}
+
 					const trimmedPassword = data.password.trim()
 					if (trimmedPassword.length < 4) {
 						this.sendMessage(connection, {

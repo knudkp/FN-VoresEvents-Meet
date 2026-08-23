@@ -106,6 +106,7 @@ export type ClientMessage =
 	  }
 	| {
 			type: 'claimHost'
+			username: string
 			password: string
 	  }
 	| {

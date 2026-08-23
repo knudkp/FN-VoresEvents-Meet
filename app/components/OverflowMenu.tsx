@@ -5,7 +5,6 @@ import { useRoomContext } from '~/hooks/useRoomContext'
 import { useRoomUrl } from '~/hooks/useRoomUrl'
 import type { ClientMessage } from '~/types/Messages'
 import { Button } from './Button'
-import { ClaimHostDialog } from './ClaimHostDialog'
 import DropdownMenu from './DropdownMenu'
 import { Icon } from './Icon/Icon'
 import { MuteAllDialog } from './MuteAllDialog'
@@ -31,7 +30,6 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 	const [bugReportMenuOpen, setBugReportMenuOpen] = useState(false)
 	const [participantsMenuOpen, setParticipantsMenuOpen] = useState(false)
 	const [muteAllOpen, setMuteAllOpen] = useState(false)
-	const [claimHostOpen, setClaimHostOpen] = useState(false)
 	const roomUrl = useRoomUrl()
 	return (
 		<>
@@ -94,7 +92,7 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 							<Icon type="userGroup" className="mr-2" />
 							{participantCount(otherUsers.length + 1)}
 						</DropdownMenu.Item>
-						{identity?.isHost ? (
+						{identity?.isHost && (
 							<>
 								<DropdownMenu.Item onSelect={() => setMuteAllOpen(true)}>
 									<Icon type="micOff" className="mr-2" />
@@ -132,11 +130,6 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 									{roomState.chatEnabled ? 'Slå chat fra' : 'Slå chat til'}
 								</DropdownMenu.Item>
 							</>
-						) : (
-							<DropdownMenu.Item onSelect={() => setClaimHostOpen(true)}>
-								<Icon type="key" className="mr-2" />
-								Bliv vært
-							</DropdownMenu.Item>
 						)}
 						<DropdownMenu.Arrow />
 					</DropdownMenu.Content>
@@ -157,9 +150,6 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 				/>
 			)}
 			{muteAllOpen && <MuteAllDialog onOpenChange={setMuteAllOpen} />}
-			{claimHostOpen && (
-				<ClaimHostDialog onOpenChange={setClaimHostOpen} />
-			)}
 		</>
 	)
 }

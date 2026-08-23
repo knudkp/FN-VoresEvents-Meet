@@ -12,6 +12,7 @@ export type Env = {
 	TURN_SERVICE_ID?: string
 	TURN_SERVICE_TOKEN?: string
 	HOST_PASSWORD?: string
+	ADMIN_USERNAME?: string
 	TRACE_LINK?: string
 	API_EXTRA_PARAMS?: string
 	MAX_WEBCAM_FRAMERATE?: string

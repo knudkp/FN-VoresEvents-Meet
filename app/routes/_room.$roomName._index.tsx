@@ -1,7 +1,7 @@
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import type { LoaderFunctionArgs } from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
-import { useNavigate, useParams, useSearchParams } from '@remix-run/react'
+import { Form, useNavigate, useParams, useSearchParams } from '@remix-run/react'
 import { useObservableAsValue } from 'partytracks/react'
 import invariant from 'tiny-invariant'
 import { AudioIndicator } from '~/components/AudioIndicator'
@@ -67,11 +67,14 @@ export default function Lobby() {
 			<div className="flex-1"></div>
 			<div className="space-y-4 w-96">
 				<div>
-					<h1 className="text-3xl font-bold">{roomName}</h1>
+					<h1 className="text-3xl font-bold">Du er i: {roomName}</h1>
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">
 						{`${joinedUsers} ${
 							joinedUsers === 1 ? 'user' : 'users'
 						} in the room.`}{' '}
+					</p>
+					<p className="mt-1 text-sm italic text-zinc-500 dark:text-zinc-400">
+						Klik på &quot;Deltag&quot; for at deltage i mødet.
 					</p>
 				</div>
 				<div className="relative">
@@ -158,7 +161,7 @@ export default function Lobby() {
 						}}
 						disabled={!session?.sessionId}
 					>
-						Join
+						Deltag
 					</Button>
 					<MicButton />
 					<CameraButton />
@@ -166,6 +169,11 @@ export default function Lobby() {
 					<Tooltip content="Copy URL">
 						<CopyButton contentValue={roomUrl}></CopyButton>
 					</Tooltip>
+					<Form method="post" action="/logout" className="ml-auto">
+						<Button type="submit" displayType="secondary">
+							Forlad {roomName}
+						</Button>
+					</Form>
 				</div>
 			</div>
 			<div className="flex flex-col justify-end flex-1">

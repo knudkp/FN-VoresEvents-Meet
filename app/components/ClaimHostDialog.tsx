@@ -8,10 +8,10 @@ import { Input } from './Input'
 import { Label } from './Label'
 
 const errorText: Partial<Record<KnownErrorCode, string>> = {
-	'invalid-host-password': 'Forkert adgangskode.',
+	'invalid-host-password': 'Forkert brugernavn eller adgangskode.',
 	'host-password-too-short': 'Adgangskoden skal være mindst 4 tegn.',
 	'host-password-not-configured':
-		'Værtsadgangskode er ikke konfigureret for dette møde.',
+		'Vært-login er ikke konfigureret for dette møde.',
 }
 
 interface ClaimHostDialogProps {
@@ -22,6 +22,7 @@ export const ClaimHostDialog: FC<ClaimHostDialogProps> = ({
 	onOpenChange,
 }) => {
 	const { room } = useRoomContext()
+	const [username, setUsername] = useState('')
 	const [password, setPassword] = useState('')
 
 	useEffect(() => {
@@ -41,18 +42,30 @@ export const ClaimHostDialog: FC<ClaimHostDialogProps> = ({
 							room.websocket.send(
 								JSON.stringify({
 									type: 'claimHost',
+									username,
 									password,
 								} satisfies ClientMessage)
 							)
 						}}
 					>
 						<div className="space-y-2">
+							<Label htmlFor="hostUsername">Admin-brugernavn</Label>
+							<Input
+								id="hostUsername"
+								type="text"
+								autoComplete="off"
+								autoFocus
+								required
+								value={username}
+								onChange={(e) => setUsername(e.target.value)}
+							/>
+						</div>
+						<div className="space-y-2">
 							<Label htmlFor="hostPassword">Værtsadgangskode</Label>
 							<Input
 								id="hostPassword"
 								type="password"
 								autoComplete="off"
-								autoFocus
 								required
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
