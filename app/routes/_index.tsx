@@ -9,6 +9,7 @@ import {
 import { nanoid } from 'nanoid'
 import { useState } from 'react'
 import invariant from 'tiny-invariant'
+import { AdminLoginDialog } from '~/components/AdminLoginDialog'
 import { Button } from '~/components/Button'
 import { Disclaimer } from '~/components/Disclaimer'
 import { Input } from '~/components/Input'
@@ -187,6 +188,9 @@ export default function Index() {
 					</details>
 
 					<Disclaimer className="mt-8" />
+					<div className="mt-2">
+						<AdminLoginDialog />
+					</div>
 				</div>
 			</div>
 		</div>
