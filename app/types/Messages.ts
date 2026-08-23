@@ -45,6 +45,7 @@ export type RoomState = {
 export type KnownErrorCode =
 	| 'not-authorized'
 	| 'invalid-host-password'
+	| 'host-password-too-short'
 	| 'host-password-not-configured'
 	| 'room-locked'
 	| 'chat-disabled'

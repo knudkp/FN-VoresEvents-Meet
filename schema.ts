@@ -34,6 +34,26 @@ export const Meetings = sqliteTable('Meetings', {
 	id: text('id').primaryKey(),
 	peakUserCount: integer('userCount').notNull(),
 	ended: text('ended'),
+	hostPasswordHash: text('hostPasswordHash'),
+})
+
+export const ChatMessages = sqliteTable('ChatMessages', {
+	...metadataColumns,
+	meetingId: text('meetingId').references(() => Meetings.id),
+	fromId: text('fromId').notNull(),
+	fromName: text('fromName').notNull(),
+	message: text('message').notNull(),
+	sentAt: integer('sentAt').notNull(),
+})
+
+export const AdminAuditLog = sqliteTable('AdminAuditLog', {
+	...metadataColumns,
+	meetingId: text('meetingId').references(() => Meetings.id),
+	action: text('action').notNull(),
+	actorId: text('actorId').notNull(),
+	actorName: text('actorName').notNull(),
+	targetId: text('targetId'),
+	targetName: text('targetName'),
 })
 
 export function getDb(context: { env: Env }) {

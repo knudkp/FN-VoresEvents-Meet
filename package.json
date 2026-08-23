@@ -19,6 +19,7 @@
 		"test:e2e": "playwright test --headed",
 		"check": "npm run lint && npm run typecheck && npm run test:ci",
 		"db:generate": "drizzle-kit generate",
+		"db:migrate": "wrangler d1 migrations apply fn-voresevents-meet-db -c wrangler.toml --remote",
 		"db:migrate:local": "wrangler d1 migrations apply orange-meets-db-development -c wrangler.development.toml --local",
 		"db:migrate:development": "wrangler d1 migrations apply orange-meets-db-development -c wrangler.development.toml --remote",
 		"db:migrate:staging": "wrangler d1 migrations apply orange-meets-db-staging -c wrangler.staging.toml --remote",

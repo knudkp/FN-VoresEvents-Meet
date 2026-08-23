@@ -33,7 +33,7 @@ The following variables are optional:
 - `MAX_WEBCAM_BITRATE` (default `1200000`): the maximum bitrate for each meeting participant's webcam.
 - `MAX_WEBCAM_FRAMERATE` (default: `24`): the maximum number of frames per second for each meeting participant's webcam.
 - `MAX_WEBCAM_QUALITY_LEVEL` (default `1080`): the maximum resolution for each meeting participant's webcam, based on the smallest dimension (i.e. the default is 1080p).
-- `HOST_PASSWORD` (no default — host features disabled until set): a shared password. Anyone who enters it (via "Bliv vært" in the in-call menu) becomes host of the room they're in, unlocking host-only controls (mute all, remove participants, lock the room, toggle chat). This is one password for the entire deployment, not per-room.
+- `HOST_PASSWORD` (optional): a master password that works to claim host in any room. It's optional because each meeting also gets its own password automatically — whoever first clicks "Bliv vært" and enters a password (min. 4 characters) sets that meeting's password (stored hashed in D1); anyone who later enters the same password also becomes host, e.g. after a reconnect. Host controls: mute all, remove participants, lock the room, toggle chat.
 
 To customize these variables, place replacement values in `.dev.vars` (for development) and in the `[vars]` section of `wrangler.toml` (for the deployment).
 
@@ -70,7 +70,9 @@ echo REPLACE_WITH_YOUR_SECRET | wrangler secret put CALLS_APP_SECRET
 
 4. Optionally, you can also use [Cloudflare's TURN Service](https://developers.cloudflare.com/calls/turn/) by setting the `TURN_SERVICE_ID` variable in `wrangler.toml` and `TURN_SERVICE_TOKEN` secret using `wrangler secret put TURN_SERVICE_TOKEN`
 
-4b. Optionally, set a host password to enable host controls (mute all, remove participants, lock the room, toggle chat) using `wrangler secret put HOST_PASSWORD`
+4b. Optionally, set a master host password using `wrangler secret put HOST_PASSWORD` (host controls also work without this — see "Optional variables" above)
+
+4c. Run the D1 migration that adds meeting host passwords, chat history and the admin action log: `npm run db:migrate:production` (or `:staging` / `:development` for those environments)
 
 5. Also optionally, you can include `OPENAI_MODEL_ENDPOINT` and `OPENAI_API_TOKEN` to use OpenAI's [Realtime API with WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc) to [invite AI](https://www.youtube.com/watch?v=AzMpyAbZfZQ) to join your meeting.
 

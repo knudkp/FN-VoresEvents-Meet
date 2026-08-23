@@ -9,6 +9,7 @@ import { Label } from './Label'
 
 const errorText: Partial<Record<KnownErrorCode, string>> = {
 	'invalid-host-password': 'Forkert adgangskode.',
+	'host-password-too-short': 'Adgangskoden skal være mindst 4 tegn.',
 	'host-password-not-configured':
 		'Værtsadgangskode er ikke konfigureret for dette møde.',
 }
@@ -56,6 +57,10 @@ export const ClaimHostDialog: FC<ClaimHostDialogProps> = ({
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 							/>
+							<p className="text-xs text-zinc-500 dark:text-zinc-400">
+								Er du den første til at blive vært i dette møde, sætter du
+								samtidig adgangskoden for resten af mødet.
+							</p>
 						</div>
 						{room.lastError && errorText[room.lastError] && (
 							<p className="text-sm text-red-500">

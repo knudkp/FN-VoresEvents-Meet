@@ -19,7 +19,7 @@ import {
 	type ConnectionContext,
 	type WSMessage,
 } from 'partyserver'
-import { getDb, Meetings } from 'schema'
+import { AdminAuditLog, ChatMessages as ChatMessagesTable, getDb, Meetings } from 'schema'
 import invariant from 'tiny-invariant'
 import { log } from '~/utils/logging'
 import {
@@ -288,6 +288,35 @@ export class ChatRoom extends Server<Env> {
 		return this.broadcastMessage(roomState)
 	}
 
+	async hashPassword(password: string): Promise<string> {
+		const digest = await crypto.subtle.digest(
+			'SHA-256',
+			new TextEncoder().encode(password)
+		)
+		return [...new Uint8Array(digest)]
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+	}
+
+	async logAdminAction(
+		meetingId: string | undefined,
+		action: string,
+		actorId: string,
+		actorName: string,
+		targetId?: string,
+		targetName?: string
+	) {
+		if (!this.db || !meetingId) return
+		await this.db.insert(AdminAuditLog).values({
+			meetingId,
+			action,
+			actorId,
+			actorName,
+			targetId,
+			targetName,
+		})
+	}
+
 	// Single source of truth for host permission checks. Sends an
 	// error back to the requester and returns false when denied, so
 	// every gated case in onMessage can early-return on this one line.
@@ -450,6 +479,15 @@ export class ChatRoom extends Server<Env> {
 						})
 						this.sendMessage(otherConnection, { type: 'muteMic' })
 					}
+					const actor = await this.ctx.storage.get<User>(
+						`session-${connection.id}`
+					)
+					await this.logAdminAction(
+						meetingId,
+						'muteAll',
+						connection.id,
+						actor?.name ?? 'unknown'
+					)
 					await this.broadcastRoomState()
 					break
 				}
@@ -466,6 +504,12 @@ export class ChatRoom extends Server<Env> {
 						)
 						break
 					}
+					const targetUser = await this.ctx.storage.get<User>(
+						`session-${data.id}`
+					)
+					const actor = await this.ctx.storage.get<User>(
+						`session-${connection.id}`
+					)
 					this.sendMessage(targetConnection, { type: 'kicked' })
 					targetConnection.close(4001, 'Removed by host')
 					await this.ctx.storage.delete(`session-${data.id}`).catch(() => {
@@ -477,26 +521,84 @@ export class ChatRoom extends Server<Env> {
 						)
 					})
 					this.userLeftNotification(data.id)
+					await this.logAdminAction(
+						meetingId,
+						'kickUser',
+						connection.id,
+						actor?.name ?? 'unknown',
+						data.id,
+						targetUser?.name
+					)
 					await this.broadcastRoomState()
 					break
 				}
 
 				case 'claimHost': {
-					if (!this.env.HOST_PASSWORD) {
+					const trimmedPassword = data.password.trim()
+					if (trimmedPassword.length < 4) {
 						this.sendMessage(connection, {
 							type: 'error',
-							error: 'host-password-not-configured',
+							error: 'host-password-too-short',
 						})
 						break
 					}
-					if (data.password !== this.env.HOST_PASSWORD) {
+
+					const isMasterPassword =
+						!!this.env.HOST_PASSWORD &&
+						trimmedPassword === this.env.HOST_PASSWORD
+
+					let authorized = isMasterPassword
+
+					if (!authorized) {
+						if (!this.db || !meetingId) {
+							this.sendMessage(connection, {
+								type: 'error',
+								error: 'host-password-not-configured',
+							})
+							break
+						}
+						const [meeting] = await this.db
+							.select()
+							.from(Meetings)
+							.where(eq(Meetings.id, meetingId))
+						if (!meeting) {
+							this.sendMessage(connection, {
+								type: 'error',
+								error: 'host-password-not-configured',
+							})
+							break
+						}
+						const passwordHash = await this.hashPassword(trimmedPassword)
+						if (!meeting.hostPasswordHash) {
+							// First person to claim host for this meeting sets its password.
+							await this.db
+								.update(Meetings)
+								.set({ hostPasswordHash: passwordHash })
+								.where(eq(Meetings.id, meetingId))
+							authorized = true
+						} else {
+							authorized = passwordHash === meeting.hostPasswordHash
+						}
+					}
+
+					if (!authorized) {
 						this.sendMessage(connection, {
 							type: 'error',
 							error: 'invalid-host-password',
 						})
 						break
 					}
+
 					await this.ctx.storage.put('hostConnectionId', connection.id)
+					const sender = await this.ctx.storage.get<User>(
+						`session-${connection.id}`
+					)
+					await this.logAdminAction(
+						meetingId,
+						'hostClaimed',
+						connection.id,
+						sender?.name ?? 'unknown'
+					)
 					log({
 						eventName: 'hostClaimed',
 						meetingId,
@@ -509,6 +611,15 @@ export class ChatRoom extends Server<Env> {
 				case 'lockRoom': {
 					if (!(await this.requireHost(connection, 'lockRoom'))) break
 					await this.ctx.storage.put('roomLocked', data.locked)
+					const actor = await this.ctx.storage.get<User>(
+						`session-${connection.id}`
+					)
+					await this.logAdminAction(
+						meetingId,
+						data.locked ? 'lockRoom' : 'unlockRoom',
+						connection.id,
+						actor?.name ?? 'unknown'
+					)
 					await this.broadcastRoomState()
 					break
 				}
@@ -516,6 +627,15 @@ export class ChatRoom extends Server<Env> {
 				case 'toggleChat': {
 					if (!(await this.requireHost(connection, 'toggleChat'))) break
 					await this.ctx.storage.put('chatEnabled', data.enabled)
+					const actor = await this.ctx.storage.get<User>(
+						`session-${connection.id}`
+					)
+					await this.logAdminAction(
+						meetingId,
+						data.enabled ? 'enableChat' : 'disableChat',
+						connection.id,
+						actor?.name ?? 'unknown'
+					)
 					await this.broadcastRoomState()
 					break
 				}
@@ -555,6 +675,15 @@ export class ChatRoom extends Server<Env> {
 						`chat:${sentAt}-${chatMessage.id}`,
 						chatMessage
 					)
+					if (this.db && meetingId) {
+						await this.db.insert(ChatMessagesTable).values({
+							meetingId,
+							fromId: connection.id,
+							fromName: sender.name,
+							message: trimmed,
+							sentAt,
+						})
+					}
 					await this.broadcastRoomState()
 					break
 				}

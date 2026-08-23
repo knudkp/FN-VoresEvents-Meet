@@ -13,6 +13,7 @@ import type { UserMedia } from './useUserMedia'
 const knownErrorCodes: KnownErrorCode[] = [
 	'not-authorized',
 	'invalid-host-password',
+	'host-password-too-short',
 	'host-password-not-configured',
 	'room-locked',
 	'chat-disabled',
