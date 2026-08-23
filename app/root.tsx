@@ -20,6 +20,7 @@ import { useFullscreen, useToggle } from 'react-use'
 
 import { QueryClient, QueryClientProvider } from 'react-query'
 import tailwind from '~/styles/tailwind.css'
+import { APP_NAME } from '~/utils/appInfo'
 import { elementNotContainedByClickTarget } from './utils/elementNotContainedByClickTarget'
 import getUsername from './utils/getUsername.server'
 import { safeRedirect } from './utils/safeReturnUrl'
@@ -81,7 +82,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
 export const meta: MetaFunction = () => [
 	{
-		title: 'Fleksjobber Netværket Møde',
+		title: APP_NAME,
 	},
 ]
 
@@ -133,8 +134,8 @@ const Document: FC<{ children?: ReactNode }> = ({ children }) => {
 			<head>
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1" />
-				<meta name="apple-mobile-web-app-title" content="Fleksjobber Netværket Møde" />
-				<meta name="application-name" content="Fkejsjobber Netværket Møde" />
+				<meta name="apple-mobile-web-app-title" content={APP_NAME} />
+				<meta name="application-name" content={APP_NAME} />
 				<meta name="msapplication-TileColor" content="#ffffff" />
 				<meta
 					name="theme-color"

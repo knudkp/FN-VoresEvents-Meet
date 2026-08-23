@@ -18,12 +18,15 @@ import { validatePassword } from '~/utils/validatePassword'
 
 export const loader = async ({ context }: LoaderFunctionArgs) => {
 	const db = getDb(context)
-	if (!db) return json({ blocked: 'Ingen database er konfigureret.' as string | null })
+	if (!db)
+		return json({ blocked: 'Ingen database er konfigureret.' as string | null })
 
 	const admins = await db.select().from(Users).where(eq(Users.role, 'admin'))
 	if (admins.length > 0) {
 		return json({
-			blocked: 'Der findes allerede en admin. Log ind i stedet.' as string | null,
+			blocked: 'Der findes allerede en admin. Log ind i stedet.' as
+				| string
+				| null,
 		})
 	}
 
@@ -110,7 +113,9 @@ export default function AdminSetup() {
 	return (
 		<div className="grid min-h-full place-items-center bg-white p-6 text-zinc-800">
 			<div className="w-full max-w-sm">
-				<h1 className="text-2xl font-bold text-[#0b565b]">Opret den første admin</h1>
+				<h1 className="text-2xl font-bold text-[#0b565b]">
+					Opret den første admin
+				</h1>
 				<p className="mb-6 mt-1 text-sm text-zinc-500">
 					Denne side virker kun indtil den første admin er oprettet.
 				</p>

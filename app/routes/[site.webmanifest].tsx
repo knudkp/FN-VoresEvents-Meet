@@ -1,9 +1,10 @@
 import { json } from 'react-router'
+import { APP_NAME } from '~/utils/appInfo'
 
 export const loader = async () => {
 	return json({
-		name: 'Orange Meets',
-		short_name: 'Orange Meets',
+		name: APP_NAME,
+		short_name: APP_NAME,
 		icons: [
 			{
 				src: '/android-chrome-192x192.png',

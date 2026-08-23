@@ -42,7 +42,7 @@ ikke oprette et nyt (seneste commit, 96aee1f).
 
 **Vigtigt**: `wrangler.toml` har pt. **ingen D1-database bundet**
 (`[[d1_databases]]` er udkommenteret). Uden den virker appen stadig (video
-+ `HOST_PASSWORD`-baseret host), men brugerkonti, chat-historik, admin-log
+og `HOST_PASSWORD`-baseret host), men brugerkonti, chat-historik, admin-log
 og rum-presets er inaktive. Husk dette når nye D1-afhængige features
 tilføjes — de skal fejle "blødt" (som eksisterende kode gør), ikke crashe.
 
@@ -54,18 +54,40 @@ tilføjes — de skal fejle "blødt" (som eksisterende kode gør), ikke crashe.
 - `app/utils/hashPassword.server.ts`, `passwordHash.server.ts` — password-hashing
 - `app/utils/sendEmail.server.ts` — Resend-invitationsmails
 
+## Navn og version
+
+Appen hedder **fleksMeet** til brugerne (titel, brand-panel, webmanifest) —
+kilde: [app/utils/appInfo.ts](app/utils/appInfo.ts) (`APP_NAME`,
+`APP_VERSION`). Bump `APP_VERSION` når en mærkbar ændring skipper (se Log).
+`© 2026 - Vores Events - Fleksjobber Netværket` i footeren er en separat
+firma-/ejer-attribution og hedder fortsat "Vores Events" — det er ikke
+produktnavnet og skal ikke ændres til fleksMeet.
+
 ## Dev-kommandoer
 
 ```sh
 npm run dev            # lokal dev (remix + wrangler)
-npm run check           # lint + typecheck + test (kør før commit ved usikkerhed)
+npm run check           # lint + typecheck + test (kør ALTID før push — se note nedenfor)
 npm run db:migrate:local  # kør D1-migrationer lokalt
 ```
 
-## Kendte åbne tråde
+**Node.js er ikke installeret i dette Windows-miljø som standard**, og
+`winget install` hænger på en UAC-prompt der ikke kan besvares
+non-interaktivt her. Virkende workaround brugt i denne session: download og
+udpak den portable Node-zip direkte (ingen admin nødvendigt):
 
-- `.gitignore` har en uncommitted tilføjelse af `.fake` (ikke referenceret
-  andre steder i koden) — formål ukendt, spørg brugeren før commit/oprydning.
+```sh
+curl -sSL -o node.zip https://nodejs.org/dist/v22.14.0/node-v22.14.0-win-x64.zip
+unzip -q node.zip -d <et-sted>
+export PATH="<et-sted>/node-v22.14.0-win-x64:$PATH"
+```
+
+Dette er kun for sessionen (scratchpad ryddes mellem sessioner) — gør det
+igen hver gang `npm`/`npx` mangler. **Kør altid `npm run check` (eller
+mindst `lint` + `typecheck`) lokalt før push**, for check.yml stopper ved
+første fejlende step og skjuler resten (typecheck/test bliver "skipped"
+hvis lint fejler) — se Log-posten fra 2026-08-23 om hvor længe en
+typecheck-fejl kan ligge skjult sådan.
 
 ## Log
 
@@ -93,3 +115,37 @@ npm run db:migrate:local  # kør D1-migrationer lokalt
 - **2026-08-23**: Oprettede denne fil. Ingen kode ændret. Grund: tidligere
   chat-session var utilgængelig for en ny session; denne fil skal sikre
   kontinuitet i konventioner/status fremover.
+- **2026-08-23**: Ryddet op og udvidet velkomstskærmen, samt fikset CI:
+  - **Rod-årsag til den fejlende GitHub Actions "Checks"-job fundet og
+    rettet**: [.eslintrc.cjs](.eslintrc.cjs) linje 1 havde en fejlagtigt
+    indsat terminal-kommando (`npx wrangler login --copy`) foran
+    kommentaren — ugyldig JS, fik `prettier --check` til at crashe før
+    eslint overhovedet kørte. Efter den rettelse dukkede en **skjult
+    typecheck-fejl** op (typecheck bliver "skipped" af check.yml når lint
+    fejler, så den havde ligget upåagtet et stykke tid): `LogEvent`-unionen
+    i [app/utils/logging.ts](app/utils/logging.ts) manglede tre varianter
+    (`roomLockedRejection`, `unauthorizedHostAction`, `hostClaimed`) som
+    [ChatRoom.server.ts](app/durableObjects/ChatRoom.server.ts) allerede
+    kaldte `log()` med — tilføjet. Plus en `ReactNode`-type-fejl i
+    [admin.tsx](app/routes/admin.tsx) (`setPasswordUrl`) rettet med en
+    eksplicit cast. 15 filer var desuden aldrig kørt gennem Prettier
+    (formentlig skrevet/committet uden om `npm run check`) — reformateret
+    uden indholdsændringer (bekræftet med `git diff -w` per fil før
+    commit). `npm run check` + `remix build` er nu grønne lokalt.
+  - **Branding**: appen hedder nu **fleksMeet** overalt hvor brugeren ser
+    navnet (side-titel, brand-panel, webmanifest) — se "Navn og version"
+    ovenfor. Gammel titel var "Fleksjobber Netværket Møde"/"Vores Events".
+  - **Layout**: `BrandPanel` (venstre, cyangrøn halvdel) er udtrukket til
+    [app/components/BrandPanel.tsx](app/components/BrandPanel.tsx) (var
+    duplikeret i `_index.tsx` og `set-username.tsx`) — copyright-teksten
+    er flyttet herind, hvid og centreret, fastgjort til bunden
+    (`flex-col` + `flex-1` om resten af indholdet skubber den nedad), og
+    fjernet fra højre-halvdelens formularer alle steder for at undgå
+    dublet. Overskriften "Velkommen" er ændret til "Velkommen til
+    fleksMeet" på både `/` og `/set-username`.
+  - **Hjælp-popup**: lille "?"-ikon øverst til højre i højre halvdel på
+    forsiden (`/`, både gæst- og logget-ind-visning) —
+    [app/components/HelpDialog.tsx](app/components/HelpDialog.tsx), samme
+    Radix Dialog-mønster som `AdminLoginDialog`.
+  - `.gitignore`s `.fake`-linje er beholdt/committet (ren lokal
+    scratch-ignorering, harmløst — ingen kode refererer til `.fake`).

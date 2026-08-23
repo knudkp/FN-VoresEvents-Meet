@@ -1,9 +1,12 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare'
+import type {
+	ActionFunctionArgs,
+	LoaderFunctionArgs,
+} from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
 import { Form, Link, useActionData, useLoaderData } from '@remix-run/react'
 import { desc, eq } from 'drizzle-orm'
-import invariant from 'tiny-invariant'
 import { getDb, Meetings, Rooms, Users } from 'schema'
+import invariant from 'tiny-invariant'
 import { requireAdmin } from '~/adminSession'
 import { Button } from '~/components/Button'
 import { Checkbox } from '~/components/Checkbox'
@@ -13,7 +16,11 @@ import { Label } from '~/components/Label'
 import { hashPassword } from '~/utils/hashPassword.server'
 import { sendSetPasswordEmail } from '~/utils/sendEmail.server'
 
-const roleLabels = { admin: 'Admin', moderator: 'Ordstyrer', user: 'Bruger' } as const
+const roleLabels = {
+	admin: 'Admin',
+	moderator: 'Ordstyrer',
+	user: 'Bruger',
+} as const
 
 function generateInviteToken(): string {
 	const bytes = crypto.getRandomValues(new Uint8Array(32))
@@ -29,11 +36,15 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	await requireAdmin(request)
 	const db = getDb(context)
 
-	const rooms = db ? await db.select().from(Rooms).orderBy(desc(Rooms.created)) : []
+	const rooms = db
+		? await db.select().from(Rooms).orderBy(desc(Rooms.created))
+		: []
 	const meetings = db
 		? await db.select().from(Meetings).orderBy(desc(Meetings.created)).limit(50)
 		: []
-	const users = db ? await db.select().from(Users).orderBy(desc(Users.created)) : []
+	const users = db
+		? await db.select().from(Users).orderBy(desc(Users.created))
+		: []
 
 	return json({ rooms, meetings, users, hasDb: Boolean(db) })
 }
@@ -76,7 +87,10 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 			.from(Users)
 			.where(eq(Users.username, username))
 		if (existing) {
-			return json({ error: 'Brugernavnet er allerede i brug.' }, { status: 400 })
+			return json(
+				{ error: 'Brugernavnet er allerede i brug.' },
+				{ status: 400 }
+			)
 		}
 
 		const rawToken = generateInviteToken()
@@ -97,7 +111,10 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 			setPasswordUrl,
 		})
 
-		return json({ ok: true, setPasswordUrl: emailSent ? undefined : setPasswordUrl })
+		return json({
+			ok: true,
+			setPasswordUrl: emailSent ? undefined : setPasswordUrl,
+		})
 	}
 
 	if (intent === 'resendInvite') {
@@ -114,7 +131,10 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 			})
 			.where(eq(Users.username, username))
 
-		const [user] = await db.select().from(Users).where(eq(Users.username, username))
+		const [user] = await db
+			.select()
+			.from(Users)
+			.where(eq(Users.username, username))
 		const setPasswordUrl = `${new URL(request.url).origin}/set-password?token=${rawToken}`
 		const emailSent = user
 			? await sendSetPasswordEmail(context.env, {
@@ -124,7 +144,10 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 				})
 			: false
 
-		return json({ ok: true, setPasswordUrl: emailSent ? undefined : setPasswordUrl })
+		return json({
+			ok: true,
+			setPasswordUrl: emailSent ? undefined : setPasswordUrl,
+		})
 	}
 
 	if (intent === 'deleteUser') {
@@ -138,7 +161,8 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 		const rawName = formData.get('name')
 		invariant(typeof rawName === 'string')
 		const name = rawName.trim().replace(/ /g, '-')
-		if (!name) return json({ error: 'Rummet skal have et navn.' }, { status: 400 })
+		if (!name)
+			return json({ error: 'Rummet skal have et navn.' }, { status: 400 })
 
 		const lockedByDefault = formData.get('lockedByDefault') === 'on'
 		const chatEnabledByDefault = formData.get('chatEnabledByDefault') === 'on'
@@ -179,7 +203,7 @@ export default function AdminDashboard() {
 	const actionData = useActionData<typeof action>()
 	const setPasswordUrl =
 		actionData && 'setPasswordUrl' in actionData
-			? actionData.setPasswordUrl
+			? (actionData.setPasswordUrl as string | undefined)
 			: undefined
 	const actionError =
 		actionData && 'error' in actionData ? actionData.error : undefined
@@ -249,7 +273,9 @@ export default function AdminDashboard() {
 			<section className="space-y-3">
 				<h2 className="text-lg font-bold">Brugere</h2>
 				{users.length === 0 && (
-					<p className="text-sm text-zinc-500">Ingen brugere er oprettet endnu.</p>
+					<p className="text-sm text-zinc-500">
+						Ingen brugere er oprettet endnu.
+					</p>
 				)}
 				<ul className="space-y-2">
 					{users.map((user) => (
@@ -287,7 +313,11 @@ export default function AdminDashboard() {
 								<Form method="post">
 									<input type="hidden" name="intent" value="deleteUser" />
 									<input type="hidden" name="username" value={user.username} />
-									<Button type="submit" displayType="danger" className="text-xs">
+									<Button
+										type="submit"
+										displayType="danger"
+										className="text-xs"
+									>
 										Slet
 									</Button>
 								</Form>
@@ -315,7 +345,9 @@ export default function AdminDashboard() {
 							name="chatEnabledByDefault"
 							defaultChecked
 						/>
-						<Label htmlFor="chatEnabledByDefault">Chat slået til fra start</Label>
+						<Label htmlFor="chatEnabledByDefault">
+							Chat slået til fra start
+						</Label>
 					</div>
 					<div className="space-y-2 sm:col-span-2">
 						<Label htmlFor="password">Vært-adgangskode (valgfri)</Label>
@@ -330,7 +362,9 @@ export default function AdminDashboard() {
 			<section className="space-y-3">
 				<h2 className="text-lg font-bold">Konfigurerede rum</h2>
 				{rooms.length === 0 && (
-					<p className="text-sm text-zinc-500">Ingen rum er konfigureret endnu.</p>
+					<p className="text-sm text-zinc-500">
+						Ingen rum er konfigureret endnu.
+					</p>
 				)}
 				<ul className="space-y-2">
 					{rooms.map((room) => (
@@ -341,19 +375,15 @@ export default function AdminDashboard() {
 							<div>
 								<p className="font-medium">{room.id}</p>
 								<p className="text-zinc-500">
-									{room.lockedByDefault ? 'Låst fra start' : 'Åbent fra start'} ·{' '}
-									{room.chatEnabledByDefault ? 'Chat til' : 'Chat fra'}
+									{room.lockedByDefault ? 'Låst fra start' : 'Åbent fra start'}{' '}
+									· {room.chatEnabledByDefault ? 'Chat til' : 'Chat fra'}
 									{room.presetHostPasswordHash ? ' · adgangskode sat' : ''}
 								</p>
 							</div>
 							<Form method="post">
 								<input type="hidden" name="intent" value="deleteRoom" />
 								<input type="hidden" name="roomId" value={room.id} />
-								<Button
-									type="submit"
-									displayType="danger"
-									className="text-xs"
-								>
+								<Button type="submit" displayType="danger" className="text-xs">
 									Slet
 								</Button>
 							</Form>
@@ -376,8 +406,8 @@ export default function AdminDashboard() {
 							<div>
 								<p className="font-medium">{meeting.id}</p>
 								<p className="text-zinc-500">
-									{meeting.ended ? 'Afsluttet' : 'Aktivt'} · {meeting.peakUserCount}{' '}
-									deltagere på det højeste
+									{meeting.ended ? 'Afsluttet' : 'Aktivt'} ·{' '}
+									{meeting.peakUserCount} deltagere på det højeste
 								</p>
 							</div>
 							{!meeting.ended && meeting.roomName && (

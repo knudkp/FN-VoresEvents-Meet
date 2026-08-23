@@ -79,6 +79,22 @@ export type LogEvent =
 			connectionId: string
 			sessionId?: string
 	  }
+	| {
+			eventName: 'roomLockedRejection'
+			meetingId?: string
+			connectionId: string
+	  }
+	| {
+			eventName: 'unauthorizedHostAction'
+			meetingId?: string
+			connectionId: string
+			action: string
+	  }
+	| {
+			eventName: 'hostClaimed'
+			meetingId?: string
+			connectionId: string
+	  }
 
 export function log(event: LogEvent) {
 	console.log(event)

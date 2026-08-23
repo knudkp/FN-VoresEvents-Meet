@@ -92,7 +92,8 @@ export class ChatRoom extends Server<Env> {
 		const username = await getUsername(ctx.request)
 		assertNonNullable(username)
 
-		const roomLocked = (await this.ctx.storage.get<boolean>('roomLocked')) ?? false
+		const roomLocked =
+			(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
 		if (roomLocked) {
 			const hostConnectionIds = await this.getHostConnectionIds()
 			let isReconnectingHost = false
@@ -278,7 +279,9 @@ export class ChatRoom extends Server<Env> {
 		const chatEnabled =
 			(await this.ctx.storage.get<boolean>('chatEnabled')) ?? true
 		const chatMessages = [
-			...(await this.ctx.storage.list<ChatMessage>({ prefix: 'chat:' })).values(),
+			...(
+				await this.ctx.storage.list<ChatMessage>({ prefix: 'chat:' })
+			).values(),
 		].slice(-200)
 		const roomState = {
 			type: 'roomState',
@@ -363,7 +366,11 @@ export class ChatRoom extends Server<Env> {
 		await this.broadcastRoomState()
 	}
 
-	async performToggleChat(enabled: boolean, actorId: string, actorName: string) {
+	async performToggleChat(
+		enabled: boolean,
+		actorId: string,
+		actorName: string
+	) {
 		const meetingId = await this.getMeetingId()
 		await this.ctx.storage.put('chatEnabled', enabled)
 		await this.logAdminAction(
@@ -409,9 +416,7 @@ export class ChatRoom extends Server<Env> {
 			console.warn(`User with id "${targetId}" not found, cannot kick user`)
 			return false
 		}
-		const targetUser = await this.ctx.storage.get<User>(
-			`session-${targetId}`
-		)
+		const targetUser = await this.ctx.storage.get<User>(`session-${targetId}`)
 		this.sendMessage(targetConnection, { type: 'kicked' })
 		targetConnection.close(4001, 'Removed by host')
 		await this.ctx.storage.delete(`session-${targetId}`).catch(() => {

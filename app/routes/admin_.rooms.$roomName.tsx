@@ -1,11 +1,14 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare'
+import type {
+	ActionFunctionArgs,
+	LoaderFunctionArgs,
+} from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
 import { Form, useLoaderData } from '@remix-run/react'
 import invariant from 'tiny-invariant'
-import type { Env } from '~/types/Env'
-import type { User } from '~/types/Messages'
 import { requireAdmin } from '~/adminSession'
 import { Button } from '~/components/Button'
+import type { Env } from '~/types/Env'
+import type { User } from '~/types/Messages'
 
 interface RoomAdminState {
 	meetingId?: string
@@ -14,7 +17,12 @@ interface RoomAdminState {
 	users: User[]
 }
 
-function callRoom(env: Env, roomName: string, path: string, init?: RequestInit) {
+function callRoom(
+	env: Env,
+	roomName: string,
+	path: string,
+	init?: RequestInit
+) {
 	const id = env.rooms.idFromName(roomName)
 	const stub = env.rooms.get(id)
 	return stub.fetch(
@@ -25,7 +33,11 @@ function callRoom(env: Env, roomName: string, path: string, init?: RequestInit) 
 	)
 }
 
-export const loader = async ({ request, context, params }: LoaderFunctionArgs) => {
+export const loader = async ({
+	request,
+	context,
+	params,
+}: LoaderFunctionArgs) => {
 	await requireAdmin(request)
 	const roomName = params.roomName
 	invariant(roomName)
@@ -35,7 +47,11 @@ export const loader = async ({ request, context, params }: LoaderFunctionArgs) =
 	return json({ roomName, state })
 }
 
-export const action = async ({ request, context, params }: ActionFunctionArgs) => {
+export const action = async ({
+	request,
+	context,
+	params,
+}: ActionFunctionArgs) => {
 	await requireAdmin(request)
 	const roomName = params.roomName
 	invariant(roomName)

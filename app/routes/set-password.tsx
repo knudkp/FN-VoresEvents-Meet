@@ -18,7 +18,10 @@ import { hashPassword } from '~/utils/hashPassword.server'
 import { hashUserPassword } from '~/utils/passwordHash.server'
 import { validatePassword } from '~/utils/validatePassword'
 
-async function findUserByToken(context: LoaderFunctionArgs['context'], token: string) {
+async function findUserByToken(
+	context: LoaderFunctionArgs['context'],
+	token: string
+) {
 	const db = getDb(context)
 	if (!db) return null
 	const tokenHash = await hashPassword(token)
@@ -27,7 +30,8 @@ async function findUserByToken(context: LoaderFunctionArgs['context'], token: st
 		.from(Users)
 		.where(eq(Users.inviteTokenHash, tokenHash))
 	if (!user) return null
-	if (!user.inviteTokenExpires || user.inviteTokenExpires < Date.now()) return null
+	if (!user.inviteTokenExpires || user.inviteTokenExpires < Date.now())
+		return null
 	return user
 }
 
@@ -113,7 +117,9 @@ export default function SetPassword() {
 	return (
 		<div className="grid min-h-full place-items-center bg-white p-6 text-zinc-800">
 			<div className="w-full max-w-sm">
-				<h1 className="text-2xl font-bold text-[#0b565b]">Velkommen, {data.username}</h1>
+				<h1 className="text-2xl font-bold text-[#0b565b]">
+					Velkommen, {data.username}
+				</h1>
 				<p className="mb-6 mt-1 text-sm text-zinc-500">
 					Vælg et visningsnavn og en adgangskode.
 				</p>

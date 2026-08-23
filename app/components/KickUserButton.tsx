@@ -30,9 +30,7 @@ export const KickUserButton: FC<KickUserButtonProps> = ({ user }) => {
 
 			<AlertDialog.Portal>
 				<AlertDialog.Overlay />
-				<AlertDialog.Content
-					onCloseAutoFocus={(e) => e.preventDefault()}
-				>
+				<AlertDialog.Content onCloseAutoFocus={(e) => e.preventDefault()}>
 					<AlertDialog.Title>Fjern {data?.displayName}?</AlertDialog.Title>
 					<AlertDialog.Description>
 						De bliver fjernet fra mødet med det samme og skal bruge linket igen

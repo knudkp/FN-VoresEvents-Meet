@@ -1,4 +1,4 @@
-npx wrangler login --copy/** @type {import('eslint').Linter.Config} */
+/** @type {import('eslint').Linter.Config} */
 module.exports = {
 	extends: ['@remix-run/eslint-config', '@remix-run/eslint-config/node'],
 	ignorePatterns: ['/public/noise/*'],

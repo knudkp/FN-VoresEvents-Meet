@@ -3,7 +3,13 @@ import { useEffect, useState } from 'react'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import type { ClientMessage, KnownErrorCode } from '~/types/Messages'
 import { Button } from './Button'
-import { Dialog, DialogContent, DialogOverlay, DialogTitle, Portal } from './Dialog'
+import {
+	Dialog,
+	DialogContent,
+	DialogOverlay,
+	DialogTitle,
+	Portal,
+} from './Dialog'
 import { Input } from './Input'
 import { Label } from './Label'
 
@@ -18,9 +24,7 @@ interface ClaimHostDialogProps {
 	onOpenChange: (open: boolean) => void
 }
 
-export const ClaimHostDialog: FC<ClaimHostDialogProps> = ({
-	onOpenChange,
-}) => {
+export const ClaimHostDialog: FC<ClaimHostDialogProps> = ({ onOpenChange }) => {
 	const { room } = useRoomContext()
 	const [username, setUsername] = useState('')
 	const [password, setPassword] = useState('')

@@ -42,6 +42,7 @@ To customize these variables, place replacement values in `.dev.vars` (for devel
 ### Admin panel
 
 Visit `/admin` and log in with `ADMIN_USERNAME` + `HOST_PASSWORD` (both required — `/admin/login` shows "not configured" without them) to:
+
 - pre-configure a room by name before anyone joins it (locked from start, chat off from start, a preset host password),
 - see configured rooms and recent/active meetings, and
 - remotely control any active meeting (lock/unlock, toggle chat, mute all, remove a participant) without joining it.

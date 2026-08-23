@@ -17,3 +17,5 @@ test-results
 
 .yalc
 yalc.lock
+
+.fake
