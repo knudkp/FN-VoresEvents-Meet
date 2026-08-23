@@ -3,6 +3,7 @@ import { useActionData } from '@remix-run/react'
 import invariant from 'tiny-invariant'
 import { AuthChoiceForm } from '~/components/AuthChoiceForm'
 import { BrandPanel } from '~/components/BrandPanel'
+import { HelpDialog } from '~/components/HelpDialog'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
 import { setUsername } from '~/utils/getUsername.server'
 import { handleLoginIntent } from '~/utils/loginAction.server'
@@ -34,7 +35,8 @@ export default function SetUsername() {
 	return (
 		<div className="flex min-h-full flex-col md:flex-row">
 			<BrandPanel />
-			<div className="flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
+			<div className="relative flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
+				<HelpDialog />
 				<div className="mx-auto w-full max-w-sm text-center">
 					<h2 className="text-[1.575rem] font-black text-[#0b565b]">
 						Velkommen til fleksMeet
