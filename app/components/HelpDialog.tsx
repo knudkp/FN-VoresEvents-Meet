@@ -14,7 +14,7 @@ export function HelpDialog() {
 				<button
 					type="button"
 					aria-label="Hjælp"
-					className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-sm font-semibold text-zinc-500 hover:border-[#0d6d72] hover:text-[#0d6d72]"
+					className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#0d6d72] bg-white text-base font-bold text-[#0d6d72] shadow-md hover:bg-[#0d6d72] hover:text-white"
 				>
 					?
 				</button>

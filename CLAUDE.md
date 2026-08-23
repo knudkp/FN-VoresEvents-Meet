@@ -91,6 +91,17 @@ typecheck-fejl kan ligge skjult sådan.
 
 ## Log
 
+- **2026-08-23**: Polish-runde på velkomstskærmen efter brugerfeedback
+  på et screenshot: hjælpe-ikonet (`?` øverst til højre) var teknisk til
+  stede i DOM'en men for lavkontrast (grå kant/tekst på hvid) til reelt
+  at kunne ses — gjort tydeligt synligt (teal kant/tekst, skygge,
+  `z-10`). "Velkommen til fleksMeet" er nu 5% større og `font-black`
+  (var `font-bold`). Tilføjede `mx-auto text-center` på
+  velkomst-blokken som en ekstra, eksplicit centrerings-garanti (den var
+  allerede centreret via flex `justify-center` på forælderen — verificeret
+  med et rigtigt Playwright-screenshot ved 1400×900 — men brugerens
+  beskårne screenshot så skævt ud, formentlig fordi beskæringen ikke
+  viste hele højre-halvdelen).
 - **2026-08-23**: Forsiden (`/`) redirectede altid til
   `/set-username?return-url=...` når man ikke var logget ind — brugeren
   vil altid have hoved-URL'en vist. Fix: `/` er nu undtaget fra

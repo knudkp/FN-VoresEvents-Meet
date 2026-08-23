@@ -94,8 +94,8 @@ export default function Index() {
 				<BrandPanel />
 				<div className="relative flex flex-1 items-center justify-center bg-white p-6 text-zinc-800">
 					<HelpDialog />
-					<div className="w-full max-w-sm">
-						<h2 className="text-2xl font-bold text-[#0b565b]">
+					<div className="mx-auto w-full max-w-sm text-center">
+						<h2 className="text-[1.575rem] font-black text-[#0b565b]">
 							Velkommen til fleksMeet
 						</h2>
 						<AuthChoiceForm error={actionData?.error} />
