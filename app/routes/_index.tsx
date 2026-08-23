@@ -7,8 +7,9 @@ import {
 	useSearchParams,
 } from '@remix-run/react'
 import { nanoid } from 'nanoid'
+import { useState } from 'react'
 import invariant from 'tiny-invariant'
-import { Button, ButtonLink } from '~/components/Button'
+import { Button } from '~/components/Button'
 import { Disclaimer } from '~/components/Disclaimer'
 import { Input } from '~/components/Input'
 import { Label } from '~/components/Label'
@@ -90,6 +91,7 @@ export default function Index() {
 	const { data } = useUserMetadata(username)
 	const [searchParams] = useSearchParams()
 	const wasRemoved = searchParams.get('removed') === '1'
+	const [newRoomName, setNewRoomName] = useState(() => nanoid(8))
 
 	return (
 		<div className="flex min-h-full flex-col md:flex-row">
@@ -116,16 +118,34 @@ export default function Index() {
 						)}
 					</div>
 
-					<ButtonLink
-						to="/new"
-						className="block w-full border-[#0d6d72] bg-[#0d6d72] text-center normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
-						onClick={(e) => {
+					<Form
+						className="space-y-2"
+						onSubmit={(e) => {
 							e.preventDefault()
-							navigate(`/${nanoid(8)}`)
+							const name = newRoomName.trim()
+							if (!name) return
+							navigate(`/${name.replace(/ /g, '-')}`)
 						}}
 					>
-						Nyt møde
-					</ButtonLink>
+						<Label htmlFor="newRoom" className="text-zinc-700 dark:text-zinc-700">
+							Mødenavn
+						</Label>
+						<div className="flex gap-3">
+							<Input
+								id="newRoom"
+								value={newRoomName}
+								onChange={(e) => setNewRoomName(e.target.value)}
+								required
+								className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
+							/>
+							<Button
+								type="submit"
+								className="whitespace-nowrap border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
+							>
+								Nyt møde
+							</Button>
+						</div>
+					</Form>
 
 					<details className="mt-4 cursor-pointer">
 						<summary className="text-sm text-zinc-500">
