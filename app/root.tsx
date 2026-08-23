@@ -35,7 +35,9 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const url = new URL(request.url)
 	const username = await getUsername(request)
 	const skipUsernameGate =
-		url.pathname === '/set-username' || url.pathname.startsWith('/admin')
+		url.pathname === '/set-username' ||
+		url.pathname === '/set-password' ||
+		url.pathname.startsWith('/admin')
 	if (!username && !skipUsernameGate) {
 		const redirectUrl = new URL(url)
 		redirectUrl.pathname = '/set-username'

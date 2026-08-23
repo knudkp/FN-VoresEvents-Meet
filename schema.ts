@@ -70,6 +70,20 @@ export const Rooms = sqliteTable('Rooms', {
 	reservedBy: text('reservedBy').notNull(),
 })
 
+export const Users = sqliteTable('Users', {
+	...metadataColumns,
+	username: text('username').notNull().unique(),
+	email: text('email').notNull(),
+	displayName: text('displayName'),
+	role: text('role', { enum: ['admin', 'moderator', 'user'] })
+		.notNull()
+		.default('user'),
+	passwordHash: text('passwordHash'),
+	passwordSalt: text('passwordSalt'),
+	inviteTokenHash: text('inviteTokenHash'),
+	inviteTokenExpires: integer('inviteTokenExpires'),
+})
+
 export function getDb(context: { env: Env }) {
 	if (!context.env.DB) {
 		return null

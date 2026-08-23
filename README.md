@@ -48,6 +48,12 @@ Visit `/admin` and log in with `ADMIN_USERNAME` + `HOST_PASSWORD` (both required
 
 Like the other D1-backed features above, this needs a bound database (`wrangler d1 create`, then fill in the `[[d1_databases]]` block in `wrangler.toml`, then `npm run db:migrate`) — without one, `/admin/login` still works but the dashboard shows empty lists and room pre-configuration is silently skipped.
 
+### User accounts
+
+From the admin dashboard, admin can also create named accounts with a role — `Admin`, `Ordstyrer` (moderator), or `Bruger` (regular user) — by entering a username, email, and role. The person gets emailed a one-time link to `/set-password` where they choose their own display name and password; until they do, the account shows as "Afventer aktivering" in the dashboard. Once activated, they can log in from the entry screen's "Log ind" tab with that username/password. A `moderator` account is automatically host in every meeting they join (no manual "Bliv vært" needed); an `admin` account also gets `/admin` access on login.
+
+Sending the invite email uses [Resend](https://resend.com) — set `RESEND_API_KEY` (and optionally `RESEND_FROM_EMAIL`, which needs a domain verified in Resend; without it, email sends from Resend's shared test address). If `RESEND_API_KEY` isn't set, or sending fails, the dashboard shows the raw invite link instead so it can be shared manually.
+
 ## Development
 
 ```sh
@@ -83,7 +89,9 @@ echo REPLACE_WITH_YOUR_SECRET | wrangler secret put CALLS_APP_SECRET
 
 4b. To enable host features, set an admin username and (optionally) a master password: `wrangler secret put ADMIN_USERNAME` and `wrangler secret put HOST_PASSWORD` (see "Optional variables" above)
 
-4c. Run the D1 migration that adds meeting host passwords, chat history and the admin action log: `npm run db:migrate:production` (or `:staging` / `:development` for those environments)
+4c. Run the D1 migrations (host passwords, chat history, admin action log, rooms, user accounts): `npm run db:migrate`
+
+4d. To enable emailed set-password invitations for created user accounts, set `wrangler secret put RESEND_API_KEY` (get a key from [resend.com](https://resend.com)) and optionally `RESEND_FROM_EMAIL` if you've verified your own sending domain there
 
 5. Also optionally, you can include `OPENAI_MODEL_ENDPOINT` and `OPENAI_API_TOKEN` to use OpenAI's [Realtime API with WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc) to [invite AI](https://www.youtube.com/watch?v=AzMpyAbZfZQ) to join your meeting.
 

@@ -25,6 +25,7 @@ import {
 	getDb,
 	Meetings,
 	Rooms,
+	Users,
 } from 'schema'
 import invariant from 'tiny-invariant'
 import { hashPassword } from '~/utils/hashPassword.server'
@@ -93,12 +94,15 @@ export class ChatRoom extends Server<Env> {
 
 		const roomLocked = (await this.ctx.storage.get<boolean>('roomLocked')) ?? false
 		if (roomLocked) {
-			const hostConnectionId =
-				await this.ctx.storage.get<string>('hostConnectionId')
-			const hostUser = hostConnectionId
-				? await this.ctx.storage.get<User>(`session-${hostConnectionId}`)
-				: undefined
-			const isReconnectingHost = hostUser?.name === username
+			const hostConnectionIds = await this.getHostConnectionIds()
+			let isReconnectingHost = false
+			for (const hostId of hostConnectionIds) {
+				const hostUser = await this.ctx.storage.get<User>(`session-${hostId}`)
+				if (hostUser?.name === username) {
+					isReconnectingHost = true
+					break
+				}
+			}
 			if (!isReconnectingHost) {
 				this.sendMessage(connection, { type: 'error', error: 'room-locked' })
 				log({
@@ -133,6 +137,19 @@ export class ChatRoom extends Server<Env> {
 		await this.ctx.storage.put(`session-${connection.id}`, user)
 		await this.ctx.storage.put(`heartbeat-${connection.id}`, Date.now())
 		await this.trackPeakUserCount()
+
+		// moderators are automatically host in every meeting they join,
+		// no manual "Bliv vært" needed
+		if (this.db) {
+			const [dbUser] = await this.db
+				.select()
+				.from(Users)
+				.where(eq(Users.username, username))
+			if (dbUser?.role === 'moderator') {
+				await this.addHostConnectionId(connection.id)
+			}
+		}
+
 		await this.broadcastRoomState()
 		const meetingId = await this.getMeetingId()
 		log({
@@ -255,8 +272,7 @@ export class ChatRoom extends Server<Env> {
 			(await this.ctx.storage.get<string>('ai:sessionId')) ?? undefined
 		const aiAudioTrack =
 			(await this.ctx.storage.get<string>('ai:trackName')) ?? undefined
-		const hostConnectionId =
-			await this.ctx.storage.get<string>('hostConnectionId')
+		const hostConnectionIds = await this.getHostConnectionIds()
 		const roomLocked =
 			(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
 		const chatEnabled =
@@ -283,7 +299,7 @@ export class ChatRoom extends Server<Env> {
 				users: [
 					...[...(await this.getUsers()).values()].map((u) => ({
 						...u,
-						isHost: u.id === hostConnectionId,
+						isHost: hostConnectionIds.includes(u.id),
 					})),
 					...(aiEnabled
 						? [
@@ -417,13 +433,26 @@ export class ChatRoom extends Server<Env> {
 		return true
 	}
 
+	// More than one connection can be host at once (someone who claimed
+	// host plus any auto-hosted moderators), so this is a set, not a
+	// single id.
+	async getHostConnectionIds(): Promise<string[]> {
+		return (await this.ctx.storage.get<string[]>('hostConnectionIds')) ?? []
+	}
+
+	async addHostConnectionId(connectionId: string) {
+		const ids = await this.getHostConnectionIds()
+		if (!ids.includes(connectionId)) {
+			await this.ctx.storage.put('hostConnectionIds', [...ids, connectionId])
+		}
+	}
+
 	// Single source of truth for host permission checks. Sends an
 	// error back to the requester and returns false when denied, so
 	// every gated case in onMessage can early-return on this one line.
 	async requireHost(connection: Connection, action: string): Promise<boolean> {
-		const hostConnectionId =
-			await this.ctx.storage.get<string>('hostConnectionId')
-		if (hostConnectionId === connection.id) return true
+		const hostConnectionIds = await this.getHostConnectionIds()
+		if (hostConnectionIds.includes(connection.id)) return true
 		this.sendMessage(connection, { type: 'error', error: 'not-authorized' })
 		const meetingId = await this.getMeetingId()
 		log({
@@ -660,7 +689,7 @@ export class ChatRoom extends Server<Env> {
 						break
 					}
 
-					await this.ctx.storage.put('hostConnectionId', connection.id)
+					await this.addHostConnectionId(connection.id)
 					const sender = await this.ctx.storage.get<User>(
 						`session-${connection.id}`
 					)
@@ -975,15 +1004,14 @@ export class ChatRoom extends Server<Env> {
 		const { pathname } = new URL(request.url)
 
 		if (pathname === '/admin/state' && request.method === 'GET') {
-			const hostConnectionId =
-				await this.ctx.storage.get<string>('hostConnectionId')
+			const hostConnectionIds = await this.getHostConnectionIds()
 			const roomLocked =
 				(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
 			const chatEnabled =
 				(await this.ctx.storage.get<boolean>('chatEnabled')) ?? true
 			const users = [...(await this.getUsers()).values()].map((u) => ({
 				...u,
-				isHost: u.id === hostConnectionId,
+				isHost: hostConnectionIds.includes(u.id),
 			}))
 			return Response.json({
 				meetingId: await this.getMeetingId(),
