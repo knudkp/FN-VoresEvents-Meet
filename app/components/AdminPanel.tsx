@@ -138,6 +138,15 @@ function formatLogDate(created: string): string {
 	}
 }
 
+const cardClassName =
+	'rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-800/50'
+const cardRowClassName = cn(
+	cardClassName,
+	'flex items-center justify-between gap-3'
+)
+const formPanelClassName =
+	'grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50 sm:grid-cols-2'
+
 export function AdminNav({
 	activeTab,
 	onTabChange,
@@ -146,7 +155,7 @@ export function AdminNav({
 	onTabChange: (tab: AdminTabId) => void
 }) {
 	return (
-		<nav className="w-48 shrink-0 space-y-6 overflow-y-auto bg-[#0b1d3a] p-4">
+		<nav className="h-full w-48 shrink-0 space-y-6 overflow-y-auto border-r border-black/20 bg-[#0b1d3a] p-4">
 			{ADMIN_TAB_GROUPS.map((group) => (
 				<div key={group.label} className="space-y-1">
 					<p className="px-2 text-xs font-bold uppercase tracking-wide text-blue-300/70">
@@ -191,7 +200,7 @@ function UserListItem({
 
 	if (isEditing) {
 		return (
-			<li className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+			<li className={cardClassName}>
 				<Form
 					method="post"
 					action="/admin"
@@ -218,7 +227,7 @@ function UserListItem({
 							name="role"
 							aria-label="Rolle"
 							defaultValue={user.role}
-							className="w-full rounded border-2 border-zinc-500 bg-zinc-50 px-2 py-1 dark:bg-zinc-700"
+							className="w-full rounded border-2 border-zinc-500 bg-zinc-100 px-2 py-1 dark:bg-zinc-700"
 						>
 							<option value="user">Bruger</option>
 							<option value="moderator">Ordstyrer</option>
@@ -244,7 +253,7 @@ function UserListItem({
 	}
 
 	return (
-		<li className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+		<li className={cardRowClassName}>
 			<div>
 				<p className="font-medium">
 					{user.username} · {roleLabels[user.role]}
@@ -469,10 +478,7 @@ function MeetingsSection({
 			)}
 			<ul className="space-y-2">
 				{visibleMeetings.map((meeting) => (
-					<li
-						key={meeting.id}
-						className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
-					>
+					<li key={meeting.id} className={cardRowClassName}>
 						<div>
 							<p className="font-medium">{meeting.roomName ?? meeting.id}</p>
 							<p className="flex items-center gap-2 text-zinc-500">
@@ -535,10 +541,7 @@ function BannedSection({
 				)}
 				<ul className="space-y-2">
 					{bannedIps.map((ban) => (
-						<li
-							key={ban.ip}
-							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
-						>
+						<li key={ban.ip} className={cardRowClassName}>
 							<div>
 								<p className="font-mono font-medium">{ban.ip}</p>
 								<p className="text-zinc-500">
@@ -570,10 +573,7 @@ function BannedSection({
 				)}
 				<ul className="space-y-2">
 					{bannedUsernames.map((ban) => (
-						<li
-							key={ban.username}
-							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
-						>
+						<li key={ban.username} className={cardRowClassName}>
 							<div>
 								<p className="font-medium">{ban.username}</p>
 								<p className="text-zinc-500">
@@ -642,7 +642,7 @@ export function AdminPanelSections({
 							method="post"
 							action="/admin"
 							id="admin-users-form"
-							className="grid gap-3 sm:grid-cols-2"
+							className={formPanelClassName}
 						>
 							<input type="hidden" name="intent" value="createUser" />
 							<div className="space-y-2">
@@ -660,7 +660,7 @@ export function AdminPanelSections({
 									name="role"
 									aria-label="Rolle"
 									defaultValue="user"
-									className="w-full rounded border-2 border-zinc-500 bg-zinc-50 px-2 py-1 dark:bg-zinc-700"
+									className="w-full rounded border-2 border-zinc-500 bg-zinc-100 px-2 py-1 dark:bg-zinc-700"
 								>
 									<option value="user">Bruger</option>
 									<option value="moderator">Ordstyrer</option>
@@ -698,7 +698,7 @@ export function AdminPanelSections({
 							method="post"
 							action="/admin"
 							id="admin-rooms-form"
-							className="grid gap-3 sm:grid-cols-2"
+							className={formPanelClassName}
 						>
 							<input type="hidden" name="intent" value="reserve" />
 							<div className="space-y-2 sm:col-span-2">
@@ -735,10 +735,7 @@ export function AdminPanelSections({
 						)}
 						<ul className="space-y-2">
 							{rooms.map((room) => (
-								<li
-									key={room.id}
-									className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
-								>
+								<li key={room.id} className={cardRowClassName}>
 									<div>
 										<p className="font-medium">{room.id}</p>
 										<p className="text-zinc-500">
@@ -789,10 +786,7 @@ export function AdminPanelSections({
 					)}
 					<ul className="space-y-2">
 						{auditLog.map((entry) => (
-							<li
-								key={entry.id}
-								className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
-							>
+							<li key={entry.id} className={cardClassName}>
 								<p className="font-medium">
 									{actionLabels[entry.action] ?? entry.action}
 									{entry.targetName ? ` · ${entry.targetName}` : ''}

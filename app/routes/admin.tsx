@@ -325,7 +325,7 @@ export default function AdminDashboard() {
 					activeTab={activeTab}
 					onTabChange={(tab) => setSearchParams({ tab })}
 				/>
-				<div className="flex-1 overflow-y-auto p-6">
+				<div className="min-h-0 flex-1 overflow-y-auto p-6">
 					<AdminPanelSections
 						data={data}
 						actionData={actionData}

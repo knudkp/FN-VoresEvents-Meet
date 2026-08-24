@@ -48,7 +48,7 @@ export function AdminPanelDialog() {
 				<RadixDialog.Content
 					className={cn(
 						'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-						'flex h-[85vh] w-[min(1100px,96vw)] flex-col',
+						'flex h-[85vh] w-[min(1100px,96vw)] flex-col overflow-hidden',
 						'rounded-lg bg-white shadow-xl',
 						'dark:bg-zinc-900 dark:shadow-none'
 					)}
@@ -57,10 +57,8 @@ export function AdminPanelDialog() {
 						<DialogTitle>Admin</DialogTitle>
 					</div>
 					<div className="flex min-h-0 flex-1">
-						<div className="border-r border-zinc-200 dark:border-zinc-700">
-							<AdminNav activeTab={activeTab} onTabChange={setActiveTab} />
-						</div>
-						<div className="flex-1 overflow-y-auto p-6">
+						<AdminNav activeTab={activeTab} onTabChange={setActiveTab} />
+						<div className="min-h-0 flex-1 overflow-y-auto p-6">
 							{data ? (
 								<AdminPanelSections
 									data={data}

@@ -13,7 +13,7 @@ export const Input = forwardRef<
 			'border-zinc-500',
 			'text-zinc-900',
 			'dark:text-zinc-50',
-			'bg-zinc-50',
+			'bg-zinc-100',
 			'dark:bg-zinc-700',
 			'px-2',
 			'py-1',

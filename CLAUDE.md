@@ -335,3 +335,26 @@ typecheck-fejl kan ligge skjult sådan.
     kørte `npx wrangler dev ./build/index.js` direkte i stedet som
     workaround, ingen kodeændring nødvendig). `npm run check`
     (typecheck/eslint/test:ci)/`remix build` grønne lokalt før push.
+- **2026-08-24**: Rettet admin-panelets layout efter brugerfeedback
+  ("voldsomt grimt") — se
+  [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s tredje
+  "NÆSTE OPGAVE"-afsnit for fuld detalje. Rod-årsag: content-panelet
+  (`flex-1 overflow-y-auto`) manglede `min-h-0`, det klassiske Tailwind-
+  flex-fælde hvor et flex-barn vokser med sit indhold i stedet for at
+  respektere sin beregnede højde — med nok indhold voksede hele
+  modalen/siden i stedet for at scrolle internt, og trak navy-menuen
+  med. Rettet i både
+  [AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx) og
+  [admin.tsx](app/routes/admin.tsx). `AdminNav` (i
+  [AdminPanel.tsx](app/components/AdminPanel.tsx)) er nu selv-forsynende
+  (`h-full` + `border-r` bagt ind i komponenten) så den fylder fuld
+  højde konsistent begge steder. Felt-baggrund
+  (`bg-zinc-50` → `bg-zinc-100` i [Input.tsx](app/components/Input.tsx)
+  og admin-panelets rolle-selects) for lidt mere kontrast. Liste-
+  elementer og "opret"-formularer fik delte kort-baggrunde
+  (`cardClassName`/`formPanelClassName`) i stedet for at flyde
+  kantløst på hvid baggrund. Verificeret visuelt med Playwright ved at
+  seede 25 fiktive brugere lokalt for at fremtvinge reel overflow —
+  bekræftede header/navy-menu/footer står stille, kun content-panelet
+  scroller (i modalen og på den fulde /admin-side). `npm run check`/
+  `remix build` grønne lokalt før push.

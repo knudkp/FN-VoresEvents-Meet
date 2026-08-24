@@ -247,3 +247,69 @@ hvis du vil migrere den database `npm run dev` faktisk bruger lokalt.
 før push.
 
 STATUS: pushet til main. Migration kørt på produktions-D1.
+
+==================================================
+NÆSTE OPGAVE — Layout-oprydning (2026-08-24, samme dag,
+tredje opfølgende bestilling)
+==================================================
+
+Efter ovenstående virkede, men brugeren syntes layoutet var "voldsomt
+grimt":
+
+1. Menu-delen (venstre navy-panel) skulle fylde hele højden lodret og
+   være fixed.
+2. Content-området i pop-op'en skulle scrolle for sig selv (ikke hele
+   modalen/vinduet).
+3. Felterne (inputs/selects) skulle have lidt mere kontrast — men ikke
+   for meget.
+4. "Lav et ordentligt layout" generelt.
+
+ROD-ÅRSAG fundet: det klassiske Tailwind-flex-fælde — et flex-barn
+uden `min-h-0` respekterer ikke sin beregnede flex-højde, men vokser i
+stedet med sit indhold (browserens default `min-height: auto`). Content-
+panelet (`flex-1 overflow-y-auto`) manglede `min-h-0`, så med nok
+indhold voksede HELE modalen/siden i stedet for at scrolle internt —
+og trak navy-menuen med sig i stedet for at den blev stående fast.
+
+RETTET:
+- [app/components/AdminPanel.tsx](app/components/AdminPanel.tsx):
+  `AdminNav` er nu selv-forsynende — `h-full` + `border-r` bagt direkte
+  ind i komponenten (før krævede den en ekstern wrapper-div for border,
+  som modalen havde, men den fulde /admin-side ikke havde — nu
+  konsistent begge steder).
+- [app/components/AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx):
+  fjernet den nu-overflødige wrapper-div om `AdminNav`; content-panelet
+  fik `min-h-0` tilføjet ved siden af `flex-1 overflow-y-auto`; selve
+  `RadixDialog.Content` fik `overflow-hidden` for rene, klippede hjørner.
+- [app/routes/admin.tsx](app/routes/admin.tsx): samme `min-h-0`-fix på
+  content-panelet på den fulde /admin-side.
+- **Felt-kontrast**: [app/components/Input.tsx](app/components/Input.tsx)s
+  baggrund ændret `bg-zinc-50` → `bg-zinc-100` (samme ændring i
+  AdminPanel.tsx's to inline `<select>`-elementer for rolle) — et
+  bevidst lille skridt, ikke en dramatisk ændring. Da `Input` bruges få
+  andre steder (login-formularer m.fl. via `AuthChoiceForm` osv.), men
+  de steder sender deres EGEN `className`-override
+  (`bg-white`/`border-zinc-300`) som via `tailwind-merge` vinder over
+  standard-klasserne — så denne ændring rammer kun steder der bruger
+  `Input` uden override, dvs. reelt kun admin-panelets formularer.
+- **Generel oprydning**: alle liste-elementer (Brugere, Rum, Møder,
+  Bannede, System log) har nu en delt `cardClassName`/`cardRowClassName`
+  (let grå baggrund `bg-zinc-50`/`dark:bg-zinc-800/50`, i stedet for
+  bare en hvid boks med kant) — mere visuel struktur uden at være
+  larmende. De to "opret"-formularer (Opret bruger, Konfigurér rum) er
+  nu pakket ind i et tilsvarende `formPanelClassName`-kort i stedet for
+  at flyde direkte på den hvide baggrund.
+
+VERIFICERET visuelt med Playwright (ikke kun typecheck): 25 fiktive
+brugere seedet direkte i lokal D1 for at fremtvinge reel overflow,
+derefter screenshot før/efter scroll — bekræftede at header, navy-menu
+og footer ALLE står helt stille mens kun content-panelet scroller
+internt (både i modalen OG på den fulde /admin-side ved direkte
+navigation). `window.scrollY` forblev 0 under hele testen — hele siden
+scroller ikke, kun det rigtige panel.
+
+`npm run typecheck`/eslint (målrettet de ændrede filer)/`test:ci`/
+`remix build` grønne lokalt før push. Ingen skema-ændring denne gang,
+så ingen migration nødvendig.
+
+STATUS: pushet til main.
