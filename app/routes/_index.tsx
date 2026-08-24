@@ -36,7 +36,13 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const username = await getUsername(request)
 	const usedAccess = request.headers.has(ACCESS_AUTHENTICATED_USER_EMAIL_HEADER)
 	const role = await getUserRole(request)
-	return json({ username, usedAccess, directoryUrl, isGuest: role === null })
+	return json({
+		username,
+		usedAccess,
+		directoryUrl,
+		isGuest: role === null,
+		isAdmin: role === 'admin',
+	})
 }
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
@@ -90,7 +96,8 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 }
 
 export default function Index() {
-	const { username, usedAccess, isGuest } = useLoaderData<typeof loader>()
+	const { username, usedAccess, isGuest, isAdmin } =
+		useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 
 	if (!username) {
@@ -115,6 +122,7 @@ export default function Index() {
 			username={username}
 			usedAccess={usedAccess}
 			isGuest={isGuest}
+			isAdmin={isAdmin}
 			actionData={actionData}
 		/>
 	)
@@ -124,11 +132,13 @@ function Dashboard({
 	username,
 	usedAccess,
 	isGuest,
+	isAdmin,
 	actionData,
 }: {
 	username: string
 	usedAccess: boolean
 	isGuest: boolean
+	isAdmin: boolean
 	actionData: { error?: string } | undefined
 }) {
 	const navigate = useNavigate()
@@ -260,7 +270,16 @@ function Dashboard({
 					})()}
 
 					<div className="mt-8">
-						<AdminLoginDialog />
+						{isAdmin ? (
+							<a
+								href="/admin"
+								className="text-xs text-zinc-400 underline hover:text-zinc-600"
+							>
+								Admin
+							</a>
+						) : (
+							<AdminLoginDialog />
+						)}
 					</div>
 				</div>
 			</div>
