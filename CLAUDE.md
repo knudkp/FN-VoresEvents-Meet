@@ -244,3 +244,20 @@ typecheck-fejl kan ligge skjult sådan.
     opdateret alle 9 importsteder; efter omdøbningen er strengen væk fra
     `public/build/`. `npm run check` + `remix build` + `vitest` grønne
     lokalt før push.
+- **2026-08-24**: Rettede det sidste åbne punkt fra 2026-08-23's
+  admin-lockout-session: "Admin"-linket nederst på "Klar til møde"-
+  skærmen ([_index.tsx](app/routes/_index.tsx)) åbnede altid
+  `AdminLoginDialog`, som poster til `/admin/login` og kun accepterer
+  `ADMIN_USERNAME`+`HOST_PASSWORD` (secrets der aldrig er sat i denne
+  deployment) — virkede derfor aldrig, heller ikke for en besøgende der
+  allerede var logget ind som en rigtig admin-konto via forsidens "Som
+  admin"-fane (`handleLoginIntent` i
+  [loginAction.server.ts](app/utils/loginAction.server.ts) sætter allerede
+  både site-sessionen og `__admin_session` ved rolle `admin`). Fix:
+  loaderen sender nu `isAdmin` (fra `getUserRole`) med, og Dashboard viser
+  et almindeligt link direkte til `/admin` når `isAdmin` er sandt, ellers
+  stadig login-popup'en. `npm run typecheck` + `test:ci` + `remix build`
+  grønne lokalt (eslint kørt målrettet på den ændrede fil; hele repoets
+  `prettier --check` fejler bredt uafhængigt af denne ændring pga.
+  `core.autocrlf=true` på denne Windows-maskine — pre-eksisterende
+  miljøstøj, ikke noget nyt introduceret her). Pushet til main.
