@@ -14,7 +14,7 @@ interface RoomAdminState {
 	meetingId?: string
 	roomLocked: boolean
 	chatEnabled: boolean
-	users: User[]
+	users: (User & { ip: string | null })[]
 }
 
 function callRoom(
@@ -78,6 +78,20 @@ export const action = async ({
 			method: 'POST',
 			body: JSON.stringify({ id }),
 		})
+	} else if (intent === 'ban-ip') {
+		const id = formData.get('userId')
+		invariant(typeof id === 'string')
+		await callRoom(context.env, roomName, '/admin/ban-ip', {
+			method: 'POST',
+			body: JSON.stringify({ id }),
+		})
+	} else if (intent === 'ban-username') {
+		const id = formData.get('userId')
+		invariant(typeof id === 'string')
+		await callRoom(context.env, roomName, '/admin/ban-username', {
+			method: 'POST',
+			body: JSON.stringify({ id }),
+		})
 	}
 
 	return json({ ok: true })
@@ -130,17 +144,57 @@ export default function AdminRoomControl() {
 							key={user.id}
 							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
 						>
-							<span>
-								{user.name}
-								{user.isHost ? ' (vært)' : ''}
-							</span>
-							<Form method="post">
-								<input type="hidden" name="intent" value="kick" />
-								<input type="hidden" name="userId" value={user.id} />
-								<Button type="submit" displayType="danger" className="text-xs">
-									Fjern
-								</Button>
-							</Form>
+							<div>
+								<p className="font-medium">
+									{user.name}
+									{user.isHost ? ' (vært)' : ''}
+								</p>
+								{user.ip && (
+									<p className="font-mono text-xs text-zinc-500">{user.ip}</p>
+								)}
+							</div>
+							<div className="flex gap-2">
+								<Form method="post">
+									<input type="hidden" name="intent" value="kick" />
+									<input type="hidden" name="userId" value={user.id} />
+									<Button
+										type="submit"
+										displayType="secondary"
+										className="text-xs"
+									>
+										Fjern
+									</Button>
+								</Form>
+								<Form method="post">
+									<input type="hidden" name="intent" value="ban-username" />
+									<input type="hidden" name="userId" value={user.id} />
+									<Button
+										type="submit"
+										displayType="danger"
+										className="text-xs"
+										title="Forhindrer denne deltager i at joine igen med samme navn"
+									>
+										Ban bruger
+									</Button>
+								</Form>
+								<Form method="post">
+									<input type="hidden" name="intent" value="ban-ip" />
+									<input type="hidden" name="userId" value={user.id} />
+									<Button
+										type="submit"
+										displayType="danger"
+										className="text-xs"
+										disabled={!user.ip}
+										title={
+											user.ip
+												? 'Forhindrer denne IP-adresse i at joine noget møde igen'
+												: 'IP-adresse ukendt'
+										}
+									>
+										Ban IP
+									</Button>
+								</Form>
+							</div>
 						</li>
 					))}
 				</ul>

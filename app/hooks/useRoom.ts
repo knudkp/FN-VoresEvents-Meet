@@ -16,6 +16,7 @@ const knownErrorCodes: KnownErrorCode[] = [
 	'host-password-too-short',
 	'host-password-not-configured',
 	'room-locked',
+	'banned',
 	'chat-disabled',
 	'chat-message-too-long',
 ]
@@ -42,7 +43,9 @@ export default function useRoom({
 		chatMessages: [],
 		ai: { enabled: false },
 	})
-	const [deniedReason, setDeniedReason] = useState<'room-locked' | null>(null)
+	const [deniedReason, setDeniedReason] = useState<
+		'room-locked' | 'banned' | null
+	>(null)
 	const [lastError, setLastError] = useState<KnownErrorCode | undefined>()
 
 	const userLeftFunctionRef = useRef(() => {})
@@ -67,7 +70,8 @@ export default function useRoom({
 					console.error(message.error)
 					if (isKnownErrorCode(message.error)) {
 						setLastError(message.error)
-						if (message.error === 'room-locked') setDeniedReason('room-locked')
+						if (message.error === 'room-locked' || message.error === 'banned')
+							setDeniedReason(message.error)
 					}
 					break
 				case 'kicked':

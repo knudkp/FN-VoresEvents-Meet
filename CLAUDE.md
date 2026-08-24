@@ -38,6 +38,8 @@ nogensinde skal være production-hård.
 - `Meetings` — pr. møde `hostPasswordHash`, `roomName`
 - `Rooms` — pre-konfigurerede rum (locked/chat default, preset password)
 - `ChatMessages`, `AdminAuditLog` — historik/logging
+- `BannedIps`, `BannedUsernames` — globalt/permanent moderations-ban
+  (håndhævet i `ChatRoom.server.ts`'s `onConnect`, se 2026-08-24-log)
 
 Roller: `moderator` er automatisk vært i ethvert møde de joiner. `admin` får
 adgang til `/admin`. Alm. `user`/gæst kan kun joine et allerede aktivt møde,
@@ -279,3 +281,57 @@ typecheck-fejl kan ligge skjult sådan.
   `npm run check`/`typecheck`/`test:ci`/`remix build` grønne lokalt
   (prettier-støjen er stadig pre-eksisterende Windows-CRLF-støj, se
   ovenstående logpost).
+- **2026-08-24**: Udvidede admin-panelet efter et opfølgende
+  brugerønske (se [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)
+  for fuld detalje) — rediger-bruger, møde-visninger og en ny globalt
+  håndhævet ban-funktion:
+  - **Rediger bruger**: ny inline "Rediger"-formular (e-mail + rolle)
+    pr. bruger i `AdminPanel.tsx`'s `UserListItem`, ny `updateUser`-
+    intent. Lukker sig selv efter gem (var en bug under test: blev
+    ellers stående åben efter en vellykket gemning).
+  - **Møde-visninger**: Agenda/Dag/Arbejdsuge/Måned/År-vælger i
+    Møder-fanen — ren klient-side filtrering af den eksisterende
+    mødehistorik på `created`-tidsstemplet, ingen ny
+    planlægningsfunktion (afklaret med brugeren først: der findes
+    ingen "fremtidige" møder i datamodellen). Plus en "Slet møde"-
+    knap (`deleteMeeting`-intent).
+  - **Ban-funktion** (ægte ny funktionalitet): to nye D1-tabeller
+    `BannedIps`/`BannedUsernames` (migration
+    `0005_giant_annihilus.sql`, kørt lokalt OG på produktions-D1).
+    `ChatRoom.server.ts`'s `onConnect` fanger nu `CF-Connecting-IP`
+    pr. forbindelse og afviser joins der matcher en ban, før noget
+    andet sker. Nye `performBanIp`/`performBanUsername` (samme mønster
+    som eksisterende `performKick`) + HTTP-endpoints
+    `/admin/ban-ip`/`/admin/ban-username`. "Ban bruger"/"Ban IP"-knapper
+    tilføjet på "Styr live"-siden
+    ([admin_.rooms.$roomName.tsx](app/routes/admin_.rooms.$roomName.tsx))
+    ved siden af den eksisterende "Fjern"; ny "Bannede"-fane i
+    admin-panelet til at se/ophæve aktive bans. En bandlyst bruger ser
+    en bevidst vag "Du har ikke adgang til dette møde."-besked (ny
+    `banned`-fejlkode). **End-to-end-testet lokalt** med en rigtig
+    Playwright-styret gæste-browser (fake kamera/mikrofon): join →
+    admin bander → bekræftet i Bannede-fanen → gen-join afvist korrekt.
+  - **Marineblå menu** (erstatter den lysegule fra samme dags
+    tidligere session): `AdminNav`'s baggrund er nu fast
+    `bg-[#0b1d3a]` med lyseblå tekst.
+  - **Migrations-fælde på produktions-D1**: `wrangler d1 migrations
+    apply --remote` fejlede først på migration 0000 ("table already
+    exists") — samme root cause-mønster som 2026-08-23's admin-
+    lockout: databasens `d1_migrations`-bogføringstabel var tom selvom
+    tabellerne fra 0000-0004 allerede fandtes. Rettet ved manuelt at
+    indsætte de 5 manglende bogførings-rækker (kun den tabel, ingen
+    rigtige data rørt), hvorefter 0005 anvendtes normalt.
+  - **Opdaget, IKKE rettet (uden for scope)**: `package.json`'s
+    `db:migrate:local`-script bruger `wrangler.development.toml`
+    (en efterladt config, se ARCHITECTURE.md), men `npm run dev`
+    bruger faktisk base `wrangler.toml` — de to migrerer altså
+    to forskellige lokale D1'er. Brug i stedet
+    `npx wrangler d1 migrations apply fn-voresevents-meet-db -c wrangler.toml --local`
+    for at ramme den database `npm run dev` rent faktisk bruger.
+  - Testet ved at køre en rigtig lokal `wrangler dev`-server (den
+    dokumenterede `npm run dev` fejlede i denne session pga.
+    `${WRANGLER_ARGS:-}` bash-parameter-expansion i `package.json`'s
+    `start`-script, som npm's cmd.exe-shell på Windows ikke forstår —
+    kørte `npx wrangler dev ./build/index.js` direkte i stedet som
+    workaround, ingen kodeændring nødvendig). `npm run check`
+    (typecheck/eslint/test:ci)/`remix build` grønne lokalt før push.

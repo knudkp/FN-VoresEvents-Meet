@@ -21,6 +21,8 @@ import {
 } from 'partyserver'
 import {
 	AdminAuditLog,
+	BannedIps,
+	BannedUsernames,
 	ChatMessages as ChatMessagesTable,
 	getDb,
 	Meetings,
@@ -91,6 +93,28 @@ export class ChatRoom extends Server<Env> {
 
 		const username = await getUsername(ctx.request)
 		assertNonNullable(username)
+		const ip = ctx.request.headers.get('CF-Connecting-IP')
+
+		if (this.db) {
+			const [ipBan] = ip
+				? await this.db.select().from(BannedIps).where(eq(BannedIps.ip, ip))
+				: []
+			const [usernameBan] = await this.db
+				.select()
+				.from(BannedUsernames)
+				.where(eq(BannedUsernames.username, username))
+			if (ipBan || usernameBan) {
+				this.sendMessage(connection, { type: 'error', error: 'banned' })
+				log({
+					eventName: 'bannedConnectionRejected',
+					meetingId: await this.getMeetingId(),
+					connectionId: connection.id,
+				})
+				connection.close(4004, 'Banned')
+				return
+			}
+		}
+		if (ip) await this.ctx.storage.put(`ip-${connection.id}`, ip)
 
 		const roomLocked =
 			(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
@@ -425,6 +449,7 @@ export class ChatRoom extends Server<Env> {
 		await this.ctx.storage.delete(`heartbeat-${targetId}`).catch(() => {
 			console.warn(`Failed to delete session heartbeat-${targetId} on kick`)
 		})
+		await this.ctx.storage.delete(`ip-${targetId}`).catch(() => {})
 		this.userLeftNotification(targetId)
 		await this.logAdminAction(
 			meetingId,
@@ -435,6 +460,65 @@ export class ChatRoom extends Server<Env> {
 			targetUser?.name
 		)
 		await this.broadcastRoomState()
+		return true
+	}
+
+	async performBanIp(
+		targetId: string,
+		actorId: string,
+		actorName: string
+	): Promise<boolean> {
+		const ip = await this.ctx.storage.get<string>(`ip-${targetId}`)
+		if (!ip) {
+			console.warn(`No IP on record for "${targetId}", cannot ban IP`)
+			return false
+		}
+		if (this.db) {
+			await this.db
+				.insert(BannedIps)
+				.values({ ip, bannedBy: actorName })
+				.onConflictDoNothing()
+		}
+		const meetingId = await this.getMeetingId()
+		const targetUser = await this.ctx.storage.get<User>(`session-${targetId}`)
+		await this.performKick(targetId, actorId, actorName)
+		await this.logAdminAction(
+			meetingId,
+			'banIp',
+			actorId,
+			actorName,
+			targetId,
+			targetUser?.name
+		)
+		return true
+	}
+
+	async performBanUsername(
+		targetId: string,
+		actorId: string,
+		actorName: string
+	): Promise<boolean> {
+		const targetUser = await this.ctx.storage.get<User>(`session-${targetId}`)
+		if (!targetUser) {
+			console.warn(`User with id "${targetId}" not found, cannot ban user`)
+			return false
+		}
+		if (this.db) {
+			await this.db
+				.insert(BannedUsernames)
+				.values({ username: targetUser.name, bannedBy: actorName })
+				.onConflictDoNothing()
+		}
+		const meetingId = await this.getMeetingId()
+		await this.performKick(targetId, actorId, actorName)
+		await this.logAdminAction(
+			meetingId,
+			'banUsername',
+			actorId,
+			actorName,
+			targetId,
+			targetUser.name
+		)
 		return true
 	}
 
@@ -1014,10 +1098,13 @@ export class ChatRoom extends Server<Env> {
 				(await this.ctx.storage.get<boolean>('roomLocked')) ?? false
 			const chatEnabled =
 				(await this.ctx.storage.get<boolean>('chatEnabled')) ?? true
-			const users = [...(await this.getUsers()).values()].map((u) => ({
-				...u,
-				isHost: hostConnectionIds.includes(u.id),
-			}))
+			const users = await Promise.all(
+				[...(await this.getUsers()).values()].map(async (u) => ({
+					...u,
+					isHost: hostConnectionIds.includes(u.id),
+					ip: await this.ctx.storage.get<string>(`ip-${u.id}`),
+				}))
+			)
 			return Response.json({
 				meetingId: await this.getMeetingId(),
 				roomLocked,
@@ -1047,6 +1134,18 @@ export class ChatRoom extends Server<Env> {
 			const { id } = (await request.json()) as { id: string }
 			const kicked = await this.performKick(id, 'admin', 'Admin')
 			return Response.json({ ok: kicked })
+		}
+
+		if (pathname === '/admin/ban-ip' && request.method === 'POST') {
+			const { id } = (await request.json()) as { id: string }
+			const banned = await this.performBanIp(id, 'admin', 'Admin')
+			return Response.json({ ok: banned })
+		}
+
+		if (pathname === '/admin/ban-username' && request.method === 'POST') {
+			const { id } = (await request.json()) as { id: string }
+			const banned = await this.performBanUsername(id, 'admin', 'Admin')
+			return Response.json({ ok: banned })
 		}
 
 		return new Response('Not found', { status: 404 })

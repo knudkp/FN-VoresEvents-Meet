@@ -130,3 +130,120 @@ blev pushet):
   push (prettier fejler stadig bredt på hele repoet pga.
   `core.autocrlf=true` på Windows — pre-eksisterende støj, se
   2026-08-24-loggen i CLAUDE.md, ikke noget nyt introduceret her).
+
+STATUS: pushet til main (commit ef37abc) samme session.
+
+==================================================
+NÆSTE OPGAVE — Rediger brugere, møde-visninger, ban-funktion,
+marineblå menu (2026-08-24, samme dag, opfølgende bestilling)
+==================================================
+
+Efter modal-opgaven ovenfor virkede, bad brugeren om mere, ud fra et
+skærmbillede af den nye modal:
+
+1. Kunne redigere eksisterende brugere (e-mail + rolle), ikke kun
+   oprette/slette.
+2. Møder-fanen skal have flere visninger: Agenda, Dag, Arbejdsuge,
+   Måned, År.
+3. Tilføj "hvor relevant": Slet, Ban IP, ban/udeluk bruger.
+4. Gør det hele lidt mere visuelt pænt.
+5. Den lysegule menu-baggrund skal være marineblå i stedet.
+
+Præciseret med brugeren undervejs (to afklarende spørgsmål, begge
+besvaret med den anbefalede/mest vidtrækkende løsning):
+- Møde-visningerne er et kalenderlignende filter/browser OVER DEN
+  EKSISTERENDE mødehistorik (grupperet efter møde-starttidspunkt) —
+  IKKE en ny fremtidig planlægningsfunktion. Der findes ingen
+  "planlagte" møder i datamodellen, kun poster der oprettes når nogen
+  rent faktisk starter et rum.
+- Ban skal være globalt og permanent: fanger deltagerens IP-adresse
+  ved tilslutning (var ikke gemt noget sted før), og blokerer den
+  IP — samt det deltagernavn der blev banned — fra at joine NOGET
+  fremtidigt møde, ikke kun det aktuelle rum.
+
+IMPLEMENTERET, TESTET LOKALT END-TO-END, OG PUSHET:
+
+- **Rediger bruger**: [app/components/AdminPanel.tsx](app/components/AdminPanel.tsx)'s
+  nye `UserListItem`-komponent har en "Rediger"-knap der folder rækken
+  ud til en inline formular (e-mail + rolle-dropdown, Gem/Annullér).
+  Ny `updateUser`-intent i [app/routes/admin.tsx](app/routes/admin.tsx).
+  Formularen lukker sig selv igen med det samme man trykker Gem
+  (`onSubmit={() => setIsEditing(false)}`) — ellers blev den
+  stående i redigeringstilstand efter et gemt (fanget under test,
+  rettet før push).
+- **Møde-visninger**: `MeetingsSection` i AdminPanel.tsx har en
+  Agenda/Dag/Arbejdsuge/Måned/År-vælger øverst til højre. Ikke-agenda-
+  visninger viser en periodenavigator (‹ periode ›) og filtrerer den
+  eksisterende mødeliste på `created`-tidsstemplet — ren
+  klient-side filtrering af allerede-hentet data, ingen ny
+  server-forespørgsel pr. periode. `MeetingRow`-typen fik et
+  `created`-felt tilføjet (fandtes i DB men var ikke eksponeret i
+  UI-typen før).
+- **Slet møde**: ny `deleteMeeting`-intent + "Slet"-knap pr. møde i
+  Møder-fanen.
+- **Ban-funktion** (ny funktionalitet, ikke kun UI):
+  - [schema.ts](schema.ts): to nye tabeller, `BannedIps` (ip, reason,
+    bannedBy) og `BannedUsernames` (username, reason, bannedBy).
+    Migration [migrations/0005_giant_annihilus.sql](migrations/0005_giant_annihilus.sql),
+    kørt både lokalt og på den RIGTIGE produktions-D1
+    (`fn-voresevents-meet-db`, remote). NB: den rigtige DB's
+    `d1_migrations`-bogføringstabel var tom (samme root cause-mønster
+    som 2026-08-23-hændelsen — tabellerne 0000-0004 fandtes allerede,
+    men var aldrig registreret som "anvendt" via wrangler), så migration
+    0000 fejlede først med "table already exists". Rettet ved manuelt at
+    indsætte de 5 manglende `d1_migrations`-rækker (kun bogførings-
+    tabellen, ingen rigtige data rørt) før 0005 kunne anvendes normalt.
+  - [app/durableObjects/ChatRoom.server.ts](app/durableObjects/ChatRoom.server.ts):
+    `onConnect` fanger nu `CF-Connecting-IP` og gemmer den pr.
+    forbindelse; slår både IP og brugernavn op mod ban-tabellerne FØR
+    forbindelsen tillades (afvises med samme mekanisme som
+    "rum er låst"). Nye `performBanIp`/`performBanUsername`-metoder
+    (indsætter ban, kicker den aktive forbindelse, logger til
+    `AdminAuditLog`) plus HTTP-endpoints `/admin/ban-ip` og
+    `/admin/ban-username` (samme mønster som det eksisterende
+    `/admin/kick`).
+  - [app/routes/admin_.rooms.$roomName.tsx](app/routes/admin_.rooms.$roomName.tsx)
+    ("Styr live"-siden) har nu "Ban bruger" og "Ban IP" ved siden af
+    "Fjern" pr. deltager, samt deltagerens IP vist (kun synlig for
+    admin). "Ban IP" er deaktiveret hvis IP'en ikke er kendt (sker
+    lokalt i dev, da Cloudflare kun sætter `CF-Connecting-IP` på den
+    rigtige edge — virker fuldt ud i produktion).
+  - Ny "Bannede"-fane i admin-panelet (under "Administration"-gruppen)
+    lister aktive IP- og brugernavn-bans med en "Ophæv"-knap
+    (`unbanIp`/`unbanUsername`-intents).
+  - Den bannede bruger ser en generisk "Du har ikke adgang til dette
+    møde."-besked ved et afvist join-forsøg (ny `banned`-fejlkode i
+    [app/types/Messages.ts](app/types/Messages.ts),
+    [app/hooks/useRoom.ts](app/hooks/useRoom.ts),
+    [app/routes/_room.tsx](app/routes/_room.tsx)) — bevidst ikke
+    ordet "bandlyst", for ikke at bekræfte over for en ondsindet
+    bruger præcis hvorfor de blev afvist.
+  - **End-to-end verificeret lokalt** (ikke kun typecheck): en rigtig
+    gæst joinede et testrum via en Playwright-styret browser
+    (fake kamera/mikrofon), admin klikkede "Ban bruger" på "Styr
+    live"-siden, bannet dukkede korrekt op under "Bannede", og et
+    efterfølgende join-forsøg med samme navn blev korrekt afvist med
+    "Du har ikke adgang til dette møde." — hele kæden (fange IP →
+    gemme ban → kicke → afvise ved gen-join) virker.
+- **Marineblå menu**: `AdminNav`'s baggrund er nu fast marineblå
+  (`bg-[#0b1d3a]`, samme i lys/mørk tilstand — en bevidst "altid mørk
+  sidebar", ikke et lys/mørk-par) med lyseblå tekst i stedet for den
+  tidligere lysegule baggrund.
+- **Visuel polish**: status-badge (grøn "Aktivt" / grå "Afsluttet") på
+  hvert møde, mødernes starttidspunkt vist, konsekvent
+  `dark:border-zinc-700` på kort der manglede det før.
+
+Kendt pre-eksisterende, IKKE rettet (uden for denne opgaves scope,
+opdaget under test): `package.json`'s `db:migrate:local`-script peger
+på `wrangler.development.toml` (en efterladt, ubrugt config — se
+ARCHITECTURE.md's advarsel om de andre wrangler.*.toml-filer), men
+`npm run dev` bruger faktisk den navnløse base `wrangler.toml` (samme
+`fn-voresevents-meet-db`/id som produktion). De to migrerer altså to
+FORSKELLIGE lokale D1-databaser — kør i stedet
+`npx wrangler d1 migrations apply fn-voresevents-meet-db -c wrangler.toml --local`
+hvis du vil migrere den database `npm run dev` faktisk bruger lokalt.
+
+`npm run check`(typecheck/eslint/test:ci)/`remix build` grønne lokalt
+før push.
+
+STATUS: pushet til main. Migration kørt på produktions-D1.

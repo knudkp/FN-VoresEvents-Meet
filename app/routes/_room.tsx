@@ -111,6 +111,16 @@ function RoomPreparation(props: {
 		)
 	}
 
+	if (!room.roomState.meetingId && room.deniedReason === 'banned') {
+		return (
+			<div className="grid place-items-center h-full p-4 text-center">
+				<p className="text-zinc-500 dark:text-zinc-400">
+					Du har ikke adgang til dette møde.
+				</p>
+			</div>
+		)
+	}
+
 	return room.roomState.meetingId ? (
 		<Room room={room} userMedia={userMedia} />
 	) : (

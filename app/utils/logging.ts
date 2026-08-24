@@ -95,6 +95,11 @@ export type LogEvent =
 			meetingId?: string
 			connectionId: string
 	  }
+	| {
+			eventName: 'bannedConnectionRejected'
+			meetingId?: string
+			connectionId: string
+	  }
 
 export function log(event: LogEvent) {
 	console.log(event)

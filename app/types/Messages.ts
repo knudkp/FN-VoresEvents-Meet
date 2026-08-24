@@ -48,6 +48,7 @@ export type KnownErrorCode =
 	| 'host-password-too-short'
 	| 'host-password-not-configured'
 	| 'room-locked'
+	| 'banned'
 	| 'chat-disabled'
 	| 'chat-message-too-long'
 

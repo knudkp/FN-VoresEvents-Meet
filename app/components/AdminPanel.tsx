@@ -1,5 +1,6 @@
 import { Link } from '@remix-run/react'
 import type { ElementType } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from './Button'
 import { Checkbox } from './Checkbox'
 import { Input } from './Input'
@@ -27,6 +28,7 @@ export type RoomRow = {
 
 export type MeetingRow = {
 	id: string
+	created: string
 	ended: string | null
 	roomName: string | null
 	peakUserCount: number
@@ -40,11 +42,27 @@ export type AuditLogRow = {
 	targetName: string | null
 }
 
+export type BannedIpRow = {
+	ip: string
+	created: string
+	reason: string | null
+	bannedBy: string
+}
+
+export type BannedUsernameRow = {
+	username: string
+	created: string
+	reason: string | null
+	bannedBy: string
+}
+
 export type AdminData = {
 	rooms: RoomRow[]
 	meetings: MeetingRow[]
 	users: UserRow[]
 	auditLog: AuditLogRow[]
+	bannedIps: BannedIpRow[]
+	bannedUsernames: BannedUsernameRow[]
 	hasDb: boolean
 }
 
@@ -59,6 +77,7 @@ export const ADMIN_TAB_GROUPS = [
 		items: [
 			{ id: 'users', label: 'Brugere', formId: 'admin-users-form' },
 			{ id: 'rooms', label: 'Rum', formId: 'admin-rooms-form' },
+			{ id: 'banned', label: 'Bannede', formId: undefined },
 		],
 	},
 	{
@@ -94,16 +113,26 @@ const actionLabels: Record<string, string> = {
 	disableChat: 'Slog chat fra',
 	muteAll: 'Mutede alle deltagere',
 	kickUser: 'Fjernede en deltager',
+	banIp: 'Bandt en IP-adresse',
+	banUsername: 'Bandt en deltager',
 	createUser: 'Oprettede bruger',
+	updateUser: 'Redigerede bruger',
 	deleteUser: 'Slettede bruger',
 	deleteRoom: 'Slettede rum',
+	deleteMeeting: 'Slettede møde',
 	resendInvite: 'Gensendte invitation',
 	configureRoom: 'Gemte rum-indstillinger',
+	unbanIp: 'Ophævede IP-ban',
+	unbanUsername: 'Ophævede brugerban',
+}
+
+function parseSqliteDate(value: string): Date {
+	return new Date(value.replace(' ', 'T') + 'Z')
 }
 
 function formatLogDate(created: string): string {
 	try {
-		return new Date(created.replace(' ', 'T') + 'Z').toLocaleString('da-DK')
+		return parseSqliteDate(created).toLocaleString('da-DK')
 	} catch {
 		return created
 	}
@@ -117,10 +146,10 @@ export function AdminNav({
 	onTabChange: (tab: AdminTabId) => void
 }) {
 	return (
-		<nav className="w-48 shrink-0 space-y-6 overflow-y-auto bg-yellow-50 p-4 dark:bg-yellow-950/30">
+		<nav className="w-48 shrink-0 space-y-6 overflow-y-auto bg-[#0b1d3a] p-4">
 			{ADMIN_TAB_GROUPS.map((group) => (
 				<div key={group.label} className="space-y-1">
-					<p className="px-2 text-xs font-bold uppercase tracking-wide text-zinc-400">
+					<p className="px-2 text-xs font-bold uppercase tracking-wide text-blue-300/70">
 						{group.label}
 					</p>
 					{group.items.map((item) => (
@@ -132,7 +161,7 @@ export function AdminNav({
 								'block w-full rounded-md px-2 py-1.5 text-left text-sm',
 								item.id === activeTab
 									? 'bg-[#0d6d72] font-medium text-white'
-									: 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800'
+									: 'text-blue-100 hover:bg-white/10'
 							)}
 						>
 							{item.label}
@@ -151,13 +180,433 @@ interface AdminPanelProps {
 	FormComponent: AdminFormComponent
 }
 
+function UserListItem({
+	user,
+	FormComponent: Form,
+}: {
+	user: UserRow
+	FormComponent: AdminFormComponent
+}) {
+	const [isEditing, setIsEditing] = useState(false)
+
+	if (isEditing) {
+		return (
+			<li className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+				<Form
+					method="post"
+					action="/admin"
+					className="grid gap-3 sm:grid-cols-2"
+					onSubmit={() => setIsEditing(false)}
+				>
+					<input type="hidden" name="intent" value="updateUser" />
+					<input type="hidden" name="username" value={user.username} />
+					<p className="font-medium sm:col-span-2">{user.username}</p>
+					<div className="space-y-2">
+						<Label htmlFor={`email-${user.username}`}>E-mail</Label>
+						<Input
+							id={`email-${user.username}`}
+							name="email"
+							type="email"
+							defaultValue={user.email}
+							required
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor={`role-${user.username}`}>Rolle</Label>
+						<select
+							id={`role-${user.username}`}
+							name="role"
+							aria-label="Rolle"
+							defaultValue={user.role}
+							className="w-full rounded border-2 border-zinc-500 bg-zinc-50 px-2 py-1 dark:bg-zinc-700"
+						>
+							<option value="user">Bruger</option>
+							<option value="moderator">Ordstyrer</option>
+							<option value="admin">Admin</option>
+						</select>
+					</div>
+					<div className="flex gap-2 sm:col-span-2">
+						<Button type="submit" className="text-xs">
+							Gem
+						</Button>
+						<Button
+							type="button"
+							displayType="secondary"
+							className="text-xs"
+							onClick={() => setIsEditing(false)}
+						>
+							Annullér
+						</Button>
+					</div>
+				</Form>
+			</li>
+		)
+	}
+
+	return (
+		<li className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700">
+			<div>
+				<p className="font-medium">
+					{user.username} · {roleLabels[user.role]}
+				</p>
+				<p className="text-zinc-500">
+					{user.email} · {user.passwordHash ? 'Aktiv' : 'Afventer aktivering'}
+				</p>
+			</div>
+			<div className="flex gap-2">
+				<Button
+					type="button"
+					displayType="secondary"
+					className="text-xs"
+					onClick={() => setIsEditing(true)}
+				>
+					Rediger
+				</Button>
+				{!user.passwordHash && (
+					<Form method="post" action="/admin">
+						<input type="hidden" name="intent" value="resendInvite" />
+						<input type="hidden" name="username" value={user.username} />
+						<Button type="submit" displayType="secondary" className="text-xs">
+							Send igen
+						</Button>
+					</Form>
+				)}
+				<Form method="post" action="/admin">
+					<input type="hidden" name="intent" value="deleteUser" />
+					<input type="hidden" name="username" value={user.username} />
+					<Button type="submit" displayType="danger" className="text-xs">
+						Slet
+					</Button>
+				</Form>
+			</div>
+		</li>
+	)
+}
+
+type MeetingViewMode = 'agenda' | 'day' | 'workweek' | 'month' | 'year'
+
+const MEETING_VIEW_MODES: { id: MeetingViewMode; label: string }[] = [
+	{ id: 'agenda', label: 'Agenda' },
+	{ id: 'day', label: 'Dag' },
+	{ id: 'workweek', label: 'Arbejdsuge' },
+	{ id: 'month', label: 'Måned' },
+	{ id: 'year', label: 'År' },
+]
+
+function startOfDay(date: Date): Date {
+	const copy = new Date(date)
+	copy.setHours(0, 0, 0, 0)
+	return copy
+}
+
+function addDays(date: Date, days: number): Date {
+	const copy = new Date(date)
+	copy.setDate(copy.getDate() + days)
+	return copy
+}
+
+function startOfWorkWeek(date: Date): Date {
+	const day = date.getDay()
+	const diffToMonday = day === 0 ? -6 : 1 - day
+	return startOfDay(addDays(date, diffToMonday))
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+	return (
+		a.getFullYear() === b.getFullYear() &&
+		a.getMonth() === b.getMonth() &&
+		a.getDate() === b.getDate()
+	)
+}
+
+function meetingMatchesPeriod(
+	meeting: MeetingRow,
+	mode: MeetingViewMode,
+	refDate: Date
+): boolean {
+	if (mode === 'agenda') return true
+	const created = parseSqliteDate(meeting.created)
+	if (mode === 'day') return isSameDay(created, refDate)
+	if (mode === 'workweek') {
+		const start = startOfWorkWeek(refDate)
+		const end = addDays(start, 5)
+		return created >= start && created < end
+	}
+	if (mode === 'month') {
+		return (
+			created.getFullYear() === refDate.getFullYear() &&
+			created.getMonth() === refDate.getMonth()
+		)
+	}
+	return created.getFullYear() === refDate.getFullYear()
+}
+
+function meetingPeriodLabel(mode: MeetingViewMode, refDate: Date): string {
+	if (mode === 'day') {
+		return refDate.toLocaleDateString('da-DK', {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric',
+		})
+	}
+	if (mode === 'workweek') {
+		const start = startOfWorkWeek(refDate)
+		const end = addDays(start, 4)
+		const startLabel = start.toLocaleDateString('da-DK', {
+			day: 'numeric',
+			month: 'short',
+		})
+		const endLabel = end.toLocaleDateString('da-DK', {
+			day: 'numeric',
+			month: 'short',
+			year: 'numeric',
+		})
+		return `${startLabel} – ${endLabel}`
+	}
+	if (mode === 'month') {
+		return refDate.toLocaleDateString('da-DK', {
+			month: 'long',
+			year: 'numeric',
+		})
+	}
+	if (mode === 'year') return String(refDate.getFullYear())
+	return 'Alle møder'
+}
+
+function shiftMeetingRefDate(
+	mode: MeetingViewMode,
+	refDate: Date,
+	direction: 1 | -1
+): Date {
+	if (mode === 'day') return addDays(refDate, direction)
+	if (mode === 'workweek') return addDays(refDate, direction * 7)
+	if (mode === 'month') {
+		const copy = new Date(refDate)
+		copy.setMonth(copy.getMonth() + direction)
+		return copy
+	}
+	if (mode === 'year') {
+		const copy = new Date(refDate)
+		copy.setFullYear(copy.getFullYear() + direction)
+		return copy
+	}
+	return refDate
+}
+
+function MeetingsSection({
+	meetings,
+	FormComponent: Form,
+}: {
+	meetings: MeetingRow[]
+	FormComponent: AdminFormComponent
+}) {
+	const [viewMode, setViewMode] = useState<MeetingViewMode>('agenda')
+	const [refDate, setRefDate] = useState(() => new Date())
+
+	const visibleMeetings = useMemo(
+		() => meetings.filter((m) => meetingMatchesPeriod(m, viewMode, refDate)),
+		[meetings, viewMode, refDate]
+	)
+
+	return (
+		<section className="space-y-4">
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<h2 className="text-lg font-bold">Møder</h2>
+				<div className="flex gap-1 rounded-md bg-zinc-100 p-1 dark:bg-zinc-800">
+					{MEETING_VIEW_MODES.map((mode) => (
+						<button
+							key={mode.id}
+							type="button"
+							onClick={() => setViewMode(mode.id)}
+							className={cn(
+								'rounded px-2.5 py-1 text-xs font-medium',
+								mode.id === viewMode
+									? 'bg-white text-[#0b565b] shadow-sm dark:bg-zinc-700 dark:text-white'
+									: 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100'
+							)}
+						>
+							{mode.label}
+						</button>
+					))}
+				</div>
+			</div>
+
+			{viewMode !== 'agenda' && (
+				<div className="flex items-center justify-center gap-4">
+					<button
+						type="button"
+						onClick={() =>
+							setRefDate((d) => shiftMeetingRefDate(viewMode, d, -1))
+						}
+						className="rounded-full px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+						aria-label="Forrige periode"
+					>
+						‹
+					</button>
+					<p className="min-w-[14rem] text-center text-sm font-medium capitalize">
+						{meetingPeriodLabel(viewMode, refDate)}
+					</p>
+					<button
+						type="button"
+						onClick={() =>
+							setRefDate((d) => shiftMeetingRefDate(viewMode, d, 1))
+						}
+						className="rounded-full px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+						aria-label="Næste periode"
+					>
+						›
+					</button>
+				</div>
+			)}
+
+			{visibleMeetings.length === 0 && (
+				<p className="text-sm text-zinc-500">
+					{meetings.length === 0
+						? 'Ingen møder endnu.'
+						: 'Ingen møder i denne periode.'}
+				</p>
+			)}
+			<ul className="space-y-2">
+				{visibleMeetings.map((meeting) => (
+					<li
+						key={meeting.id}
+						className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
+					>
+						<div>
+							<p className="font-medium">{meeting.roomName ?? meeting.id}</p>
+							<p className="flex items-center gap-2 text-zinc-500">
+								<span
+									className={cn(
+										'inline-block rounded-full px-1.5 py-0.5 text-xs font-medium',
+										meeting.ended
+											? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+											: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+									)}
+								>
+									{meeting.ended ? 'Afsluttet' : 'Aktivt'}
+								</span>
+								{formatLogDate(meeting.created)} ·{' '}
+								{meeting.peakUserCount} deltagere på det højeste
+							</p>
+						</div>
+						<div className="flex items-center gap-3">
+							{!meeting.ended && meeting.roomName && (
+								<Link
+									to={`/admin/rooms/${meeting.roomName}`}
+									className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
+								>
+									Styr live
+								</Link>
+							)}
+							<Form method="post" action="/admin">
+								<input type="hidden" name="intent" value="deleteMeeting" />
+								<input type="hidden" name="meetingId" value={meeting.id} />
+								<Button type="submit" displayType="danger" className="text-xs">
+									Slet
+								</Button>
+							</Form>
+						</div>
+					</li>
+				))}
+			</ul>
+		</section>
+	)
+}
+
+function BannedSection({
+	bannedIps,
+	bannedUsernames,
+	FormComponent: Form,
+}: {
+	bannedIps: BannedIpRow[]
+	bannedUsernames: BannedUsernameRow[]
+	FormComponent: AdminFormComponent
+}) {
+	return (
+		<div className="space-y-8">
+			<section className="space-y-3">
+				<h2 className="text-lg font-bold">Bannede IP-adresser</h2>
+				{bannedIps.length === 0 && (
+					<p className="text-sm text-zinc-500">
+						Ingen IP-adresser er bandlyst. Ban en deltager fra "Styr live" på
+						et aktivt møde.
+					</p>
+				)}
+				<ul className="space-y-2">
+					{bannedIps.map((ban) => (
+						<li
+							key={ban.ip}
+							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
+						>
+							<div>
+								<p className="font-mono font-medium">{ban.ip}</p>
+								<p className="text-zinc-500">
+									Bandt af {ban.bannedBy} · {formatLogDate(ban.created)}
+								</p>
+							</div>
+							<Form method="post" action="/admin">
+								<input type="hidden" name="intent" value="unbanIp" />
+								<input type="hidden" name="ip" value={ban.ip} />
+								<Button
+									type="submit"
+									displayType="secondary"
+									className="text-xs"
+								>
+									Ophæv
+								</Button>
+							</Form>
+						</li>
+					))}
+				</ul>
+			</section>
+
+			<section className="space-y-3">
+				<h2 className="text-lg font-bold">Bandlyste deltagernavne</h2>
+				{bannedUsernames.length === 0 && (
+					<p className="text-sm text-zinc-500">
+						Ingen deltagernavne er bandlyst.
+					</p>
+				)}
+				<ul className="space-y-2">
+					{bannedUsernames.map((ban) => (
+						<li
+							key={ban.username}
+							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
+						>
+							<div>
+								<p className="font-medium">{ban.username}</p>
+								<p className="text-zinc-500">
+									Bandt af {ban.bannedBy} · {formatLogDate(ban.created)}
+								</p>
+							</div>
+							<Form method="post" action="/admin">
+								<input type="hidden" name="intent" value="unbanUsername" />
+								<input type="hidden" name="username" value={ban.username} />
+								<Button
+									type="submit"
+									displayType="secondary"
+									className="text-xs"
+								>
+									Ophæv
+								</Button>
+							</Form>
+						</li>
+					))}
+				</ul>
+			</section>
+		</div>
+	)
+}
+
 export function AdminPanelSections({
 	data,
 	actionData,
 	activeTab,
 	FormComponent: Form,
 }: AdminPanelProps) {
-	const { rooms, meetings, users, auditLog, hasDb } = data
+	const { rooms, meetings, users, auditLog, bannedIps, bannedUsernames, hasDb } =
+		data
 	const setPasswordUrl =
 		actionData && 'setPasswordUrl' in actionData
 			? actionData.setPasswordUrl
@@ -230,58 +679,11 @@ export function AdminPanelSections({
 						)}
 						<ul className="space-y-2">
 							{users.map((user) => (
-								<li
+								<UserListItem
 									key={user.username}
-									className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
-								>
-									<div>
-										<p className="font-medium">
-											{user.username} · {roleLabels[user.role]}
-										</p>
-										<p className="text-zinc-500">
-											{user.email} ·{' '}
-											{user.passwordHash ? 'Aktiv' : 'Afventer aktivering'}
-										</p>
-									</div>
-									<div className="flex gap-2">
-										{!user.passwordHash && (
-											<Form method="post" action="/admin">
-												<input
-													type="hidden"
-													name="intent"
-													value="resendInvite"
-												/>
-												<input
-													type="hidden"
-													name="username"
-													value={user.username}
-												/>
-												<Button
-													type="submit"
-													displayType="secondary"
-													className="text-xs"
-												>
-													Send igen
-												</Button>
-											</Form>
-										)}
-										<Form method="post" action="/admin">
-											<input type="hidden" name="intent" value="deleteUser" />
-											<input
-												type="hidden"
-												name="username"
-												value={user.username}
-											/>
-											<Button
-												type="submit"
-												displayType="danger"
-												className="text-xs"
-											>
-												Slet
-											</Button>
-										</Form>
-									</div>
-								</li>
+									user={user}
+									FormComponent={Form}
+								/>
 							))}
 						</ul>
 					</section>
@@ -335,7 +737,7 @@ export function AdminPanelSections({
 							{rooms.map((room) => (
 								<li
 									key={room.id}
-									className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
+									className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
 								>
 									<div>
 										<p className="font-medium">{room.id}</p>
@@ -365,37 +767,16 @@ export function AdminPanelSections({
 				</div>
 			)}
 
+			{activeTab === 'banned' && (
+				<BannedSection
+					bannedIps={bannedIps}
+					bannedUsernames={bannedUsernames}
+					FormComponent={Form}
+				/>
+			)}
+
 			{activeTab === 'meetings' && (
-				<section className="space-y-3">
-					<h2 className="text-lg font-bold">Møder</h2>
-					{meetings.length === 0 && (
-						<p className="text-sm text-zinc-500">Ingen møder endnu.</p>
-					)}
-					<ul className="space-y-2">
-						{meetings.map((meeting) => (
-							<li
-								key={meeting.id}
-								className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
-							>
-								<div>
-									<p className="font-medium">{meeting.id}</p>
-									<p className="text-zinc-500">
-										{meeting.ended ? 'Afsluttet' : 'Aktivt'} ·{' '}
-										{meeting.peakUserCount} deltagere på det højeste
-									</p>
-								</div>
-								{!meeting.ended && meeting.roomName && (
-									<Link
-										to={`/admin/rooms/${meeting.roomName}`}
-										className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-									>
-										Styr live
-									</Link>
-								)}
-							</li>
-						))}
-					</ul>
-				</section>
+				<MeetingsSection meetings={meetings} FormComponent={Form} />
 			)}
 
 			{activeTab === 'auditLog' && (
@@ -410,7 +791,7 @@ export function AdminPanelSections({
 						{auditLog.map((entry) => (
 							<li
 								key={entry.id}
-								className="rounded-md border border-zinc-200 p-3 text-sm"
+								className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
 							>
 								<p className="font-medium">
 									{actionLabels[entry.action] ?? entry.action}

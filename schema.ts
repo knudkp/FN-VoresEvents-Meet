@@ -70,6 +70,20 @@ export const Rooms = sqliteTable('Rooms', {
 	reservedBy: text('reservedBy').notNull(),
 })
 
+export const BannedIps = sqliteTable('BannedIps', {
+	...metadataColumns,
+	ip: text('ip').notNull().unique(),
+	reason: text('reason'),
+	bannedBy: text('bannedBy').notNull(),
+})
+
+export const BannedUsernames = sqliteTable('BannedUsernames', {
+	...metadataColumns,
+	username: text('username').notNull().unique(),
+	reason: text('reason'),
+	bannedBy: text('bannedBy').notNull(),
+})
+
 export const Users = sqliteTable('Users', {
 	...metadataColumns,
 	username: text('username').notNull().unique(),

@@ -5,7 +5,15 @@ import type {
 import { json } from '@remix-run/cloudflare'
 import { Form, useActionData, useLoaderData, useSearchParams } from '@remix-run/react'
 import { desc, eq } from 'drizzle-orm'
-import { AdminAuditLog, getDb, Meetings, Rooms, Users } from 'schema'
+import {
+	AdminAuditLog,
+	BannedIps,
+	BannedUsernames,
+	getDb,
+	Meetings,
+	Rooms,
+	Users,
+} from 'schema'
 import invariant from 'tiny-invariant'
 import { requireAdmin } from '~/adminSession.server'
 import {
@@ -49,8 +57,25 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 				.orderBy(desc(AdminAuditLog.created))
 				.limit(100)
 		: []
+	const bannedIps = db
+		? await db.select().from(BannedIps).orderBy(desc(BannedIps.created))
+		: []
+	const bannedUsernames = db
+		? await db
+				.select()
+				.from(BannedUsernames)
+				.orderBy(desc(BannedUsernames.created))
+		: []
 
-	return json({ rooms, meetings, users, auditLog, hasDb: Boolean(db) })
+	return json({
+		rooms,
+		meetings,
+		users,
+		auditLog,
+		bannedIps,
+		bannedUsernames,
+		hasDb: Boolean(db),
+	})
 }
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
@@ -174,11 +199,56 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 		})
 	}
 
+	if (intent === 'updateUser') {
+		const username = formData.get('username')
+		const email = formData.get('email')
+		const role = formData.get('role')
+		invariant(typeof username === 'string')
+		invariant(typeof email === 'string')
+		invariant(role === 'admin' || role === 'moderator' || role === 'user')
+
+		const trimmedEmail = email.trim()
+		if (!trimmedEmail) {
+			return json({ error: 'E-mail må ikke være tom.' }, { status: 400 })
+		}
+
+		await db
+			.update(Users)
+			.set({ email: trimmedEmail, role, modified: new Date().toISOString() })
+			.where(eq(Users.username, username))
+		await logAction('updateUser', username, username)
+		return json({ ok: true })
+	}
+
 	if (intent === 'deleteUser') {
 		const username = formData.get('username')
 		invariant(typeof username === 'string')
 		await db.delete(Users).where(eq(Users.username, username))
 		await logAction('deleteUser', username, username)
+		return json({ ok: true })
+	}
+
+	if (intent === 'deleteMeeting') {
+		const meetingId = formData.get('meetingId')
+		invariant(typeof meetingId === 'string')
+		await db.delete(Meetings).where(eq(Meetings.id, meetingId))
+		await logAction('deleteMeeting', meetingId, meetingId)
+		return json({ ok: true })
+	}
+
+	if (intent === 'unbanIp') {
+		const ip = formData.get('ip')
+		invariant(typeof ip === 'string')
+		await db.delete(BannedIps).where(eq(BannedIps.ip, ip))
+		await logAction('unbanIp', ip, ip)
+		return json({ ok: true })
+	}
+
+	if (intent === 'unbanUsername') {
+		const username = formData.get('username')
+		invariant(typeof username === 'string')
+		await db.delete(BannedUsernames).where(eq(BannedUsernames.username, username))
+		await logAction('unbanUsername', username, username)
 		return json({ ok: true })
 	}
 
@@ -227,6 +297,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 const isAdminTabId = (value: string | null): value is AdminTabId =>
 	value === 'users' ||
 	value === 'rooms' ||
+	value === 'banned' ||
 	value === 'meetings' ||
 	value === 'auditLog'
 
