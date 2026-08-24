@@ -3,24 +3,21 @@ import type {
 	LoaderFunctionArgs,
 } from '@remix-run/cloudflare'
 import { json } from '@remix-run/cloudflare'
-import { Form, Link, useActionData, useLoaderData } from '@remix-run/react'
+import { Form, useActionData, useLoaderData, useSearchParams } from '@remix-run/react'
 import { desc, eq } from 'drizzle-orm'
-import { getDb, Meetings, Rooms, Users } from 'schema'
+import { AdminAuditLog, getDb, Meetings, Rooms, Users } from 'schema'
 import invariant from 'tiny-invariant'
 import { requireAdmin } from '~/adminSession.server'
+import {
+	AdminNav,
+	AdminPanelSections,
+	type AdminTabId,
+} from '~/components/AdminPanel'
 import { Button } from '~/components/Button'
-import { Checkbox } from '~/components/Checkbox'
 import { Disclaimer } from '~/components/Disclaimer'
-import { Input } from '~/components/Input'
-import { Label } from '~/components/Label'
 import { hashPassword } from '~/utils/hashPassword.server'
+import getUsername from '~/utils/getUsername.server'
 import { sendSetPasswordEmail } from '~/utils/sendEmail.server'
-
-const roleLabels = {
-	admin: 'Admin',
-	moderator: 'Ordstyrer',
-	user: 'Bruger',
-} as const
 
 function generateInviteToken(): string {
 	const bytes = crypto.getRandomValues(new Uint8Array(32))
@@ -45,8 +42,15 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 	const users = db
 		? await db.select().from(Users).orderBy(desc(Users.created))
 		: []
+	const auditLog = db
+		? await db
+				.select()
+				.from(AdminAuditLog)
+				.orderBy(desc(AdminAuditLog.created))
+				.limit(100)
+		: []
 
-	return json({ rooms, meetings, users, hasDb: Boolean(db) })
+	return json({ rooms, meetings, users, auditLog, hasDb: Boolean(db) })
 }
 
 export const action = async ({ request, context }: ActionFunctionArgs) => {
@@ -56,6 +60,23 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 		return json({ error: 'Ingen database er konfigureret.' }, { status: 400 })
 	}
 
+	const actorName = (await getUsername(request)) ?? 'Admin'
+
+	async function logAction(
+		action: string,
+		targetId?: string,
+		targetName?: string
+	) {
+		invariant(db)
+		await db.insert(AdminAuditLog).values({
+			action,
+			actorId: actorName,
+			actorName,
+			targetId,
+			targetName,
+		})
+	}
+
 	const formData = await request.formData()
 	const intent = formData.get('intent')
 
@@ -63,6 +84,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 		const roomId = formData.get('roomId')
 		invariant(typeof roomId === 'string')
 		await db.delete(Rooms).where(eq(Rooms.id, roomId))
+		await logAction('deleteRoom', roomId, roomId)
 		return json({ ok: true })
 	}
 
@@ -103,6 +125,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 			inviteTokenHash,
 			inviteTokenExpires: Date.now() + INVITE_TOKEN_LIFETIME_MS,
 		})
+		await logAction('createUser', username, username)
 
 		const setPasswordUrl = `${new URL(request.url).origin}/set-password?token=${rawToken}`
 		const emailSent = await sendSetPasswordEmail(context.env, {
@@ -130,6 +153,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 				inviteTokenExpires: Date.now() + INVITE_TOKEN_LIFETIME_MS,
 			})
 			.where(eq(Users.username, username))
+		await logAction('resendInvite', username, username)
 
 		const [user] = await db
 			.select()
@@ -154,6 +178,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 		const username = formData.get('username')
 		invariant(typeof username === 'string')
 		await db.delete(Users).where(eq(Users.username, username))
+		await logAction('deleteUser', username, username)
 		return json({ ok: true })
 	}
 
@@ -192,25 +217,31 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 				reservedBy: 'admin',
 			})
 		}
+		await logAction('configureRoom', name, name)
 		return json({ ok: true })
 	}
 
 	return json({ error: 'Ukendt handling.' }, { status: 400 })
 }
 
+const isAdminTabId = (value: string | null): value is AdminTabId =>
+	value === 'users' ||
+	value === 'rooms' ||
+	value === 'meetings' ||
+	value === 'auditLog'
+
 export default function AdminDashboard() {
-	const { rooms, meetings, users, hasDb } = useLoaderData<typeof loader>()
+	const data = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const setPasswordUrl =
-		actionData && 'setPasswordUrl' in actionData
-			? (actionData.setPasswordUrl as string | undefined)
-			: undefined
-	const actionError =
-		actionData && 'error' in actionData ? actionData.error : undefined
+	const [searchParams, setSearchParams] = useSearchParams()
+	const requestedTab = searchParams.get('tab')
+	const activeTab: AdminTabId = isAdminTabId(requestedTab)
+		? requestedTab
+		: 'users'
 
 	return (
-		<div className="mx-auto max-w-3xl space-y-10 p-6 text-zinc-800">
-			<div className="flex items-center justify-between">
+		<div className="mx-auto flex h-full max-w-6xl flex-col text-zinc-800">
+			<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
 				<h1 className="text-2xl font-bold text-[#0b565b]">Admin</h1>
 				<Form method="post" action="/admin/logout">
 					<Button type="submit" displayType="secondary" className="text-xs">
@@ -218,212 +249,21 @@ export default function AdminDashboard() {
 					</Button>
 				</Form>
 			</div>
-
-			{!hasDb && (
-				<div className="rounded-md bg-zinc-100 p-3 text-sm text-zinc-600">
-					Ingen database er konfigureret — rum-konfiguration og mødelister er
-					tomme, indtil en D1-database er koblet på.
+			<div className="flex min-h-0 flex-1">
+				<AdminNav
+					activeTab={activeTab}
+					onTabChange={(tab) => setSearchParams({ tab })}
+				/>
+				<div className="flex-1 overflow-y-auto p-6">
+					<AdminPanelSections
+						data={data}
+						actionData={actionData}
+						activeTab={activeTab}
+						FormComponent={Form}
+					/>
+					<Disclaimer />
 				</div>
-			)}
-
-			{actionError && (
-				<div className="rounded-md bg-red-100 p-3 text-sm text-red-800">
-					{actionError}
-				</div>
-			)}
-			{setPasswordUrl && (
-				<div className="space-y-1 rounded-md bg-zinc-100 p-3 text-sm text-zinc-700">
-					<p>Kunne ikke sende e-mail — send dette link manuelt:</p>
-					<p className="break-all font-mono text-xs">{setPasswordUrl}</p>
-				</div>
-			)}
-
-			<section className="space-y-4">
-				<h2 className="text-lg font-bold">Opret bruger</h2>
-				<Form method="post" className="grid gap-3 sm:grid-cols-2">
-					<input type="hidden" name="intent" value="createUser" />
-					<div className="space-y-2">
-						<Label htmlFor="username">Brugernavn</Label>
-						<Input id="username" name="username" required minLength={4} />
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor="email">E-mail</Label>
-						<Input id="email" name="email" type="email" required />
-					</div>
-					<div className="space-y-2 sm:col-span-2">
-						<Label htmlFor="role">Rolle</Label>
-						<select
-							id="role"
-							name="role"
-							aria-label="Rolle"
-							defaultValue="user"
-							className="w-full rounded border-2 border-zinc-500 bg-zinc-50 px-2 py-1 dark:bg-zinc-700"
-						>
-							<option value="user">Bruger</option>
-							<option value="moderator">Ordstyrer</option>
-							<option value="admin">Admin</option>
-						</select>
-					</div>
-					<Button type="submit" className="sm:col-span-2">
-						Opret og send invitation
-					</Button>
-				</Form>
-			</section>
-
-			<section className="space-y-3">
-				<h2 className="text-lg font-bold">Brugere</h2>
-				{users.length === 0 && (
-					<p className="text-sm text-zinc-500">
-						Ingen brugere er oprettet endnu.
-					</p>
-				)}
-				<ul className="space-y-2">
-					{users.map((user) => (
-						<li
-							key={user.username}
-							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
-						>
-							<div>
-								<p className="font-medium">
-									{user.username} · {roleLabels[user.role]}
-								</p>
-								<p className="text-zinc-500">
-									{user.email} ·{' '}
-									{user.passwordHash ? 'Aktiv' : 'Afventer aktivering'}
-								</p>
-							</div>
-							<div className="flex gap-2">
-								{!user.passwordHash && (
-									<Form method="post">
-										<input type="hidden" name="intent" value="resendInvite" />
-										<input
-											type="hidden"
-											name="username"
-											value={user.username}
-										/>
-										<Button
-											type="submit"
-											displayType="secondary"
-											className="text-xs"
-										>
-											Send igen
-										</Button>
-									</Form>
-								)}
-								<Form method="post">
-									<input type="hidden" name="intent" value="deleteUser" />
-									<input type="hidden" name="username" value={user.username} />
-									<Button
-										type="submit"
-										displayType="danger"
-										className="text-xs"
-									>
-										Slet
-									</Button>
-								</Form>
-							</div>
-						</li>
-					))}
-				</ul>
-			</section>
-
-			<section className="space-y-4">
-				<h2 className="text-lg font-bold">Konfigurér rum</h2>
-				<Form method="post" className="grid gap-3 sm:grid-cols-2">
-					<input type="hidden" name="intent" value="reserve" />
-					<div className="space-y-2 sm:col-span-2">
-						<Label htmlFor="name">Rumnavn</Label>
-						<Input id="name" name="name" required />
-					</div>
-					<div className="flex items-center gap-2">
-						<Checkbox id="lockedByDefault" name="lockedByDefault" />
-						<Label htmlFor="lockedByDefault">Låst fra start</Label>
-					</div>
-					<div className="flex items-center gap-2">
-						<Checkbox
-							id="chatEnabledByDefault"
-							name="chatEnabledByDefault"
-							defaultChecked
-						/>
-						<Label htmlFor="chatEnabledByDefault">
-							Chat slået til fra start
-						</Label>
-					</div>
-					<div className="space-y-2 sm:col-span-2">
-						<Label htmlFor="password">Vært-adgangskode (valgfri)</Label>
-						<Input id="password" name="password" type="password" />
-					</div>
-					<Button type="submit" className="sm:col-span-2">
-						Gem
-					</Button>
-				</Form>
-			</section>
-
-			<section className="space-y-3">
-				<h2 className="text-lg font-bold">Konfigurerede rum</h2>
-				{rooms.length === 0 && (
-					<p className="text-sm text-zinc-500">
-						Ingen rum er konfigureret endnu.
-					</p>
-				)}
-				<ul className="space-y-2">
-					{rooms.map((room) => (
-						<li
-							key={room.id}
-							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
-						>
-							<div>
-								<p className="font-medium">{room.id}</p>
-								<p className="text-zinc-500">
-									{room.lockedByDefault ? 'Låst fra start' : 'Åbent fra start'}{' '}
-									· {room.chatEnabledByDefault ? 'Chat til' : 'Chat fra'}
-									{room.presetHostPasswordHash ? ' · adgangskode sat' : ''}
-								</p>
-							</div>
-							<Form method="post">
-								<input type="hidden" name="intent" value="deleteRoom" />
-								<input type="hidden" name="roomId" value={room.id} />
-								<Button type="submit" displayType="danger" className="text-xs">
-									Slet
-								</Button>
-							</Form>
-						</li>
-					))}
-				</ul>
-			</section>
-
-			<section className="space-y-3">
-				<h2 className="text-lg font-bold">Møder</h2>
-				{meetings.length === 0 && (
-					<p className="text-sm text-zinc-500">Ingen møder endnu.</p>
-				)}
-				<ul className="space-y-2">
-					{meetings.map((meeting) => (
-						<li
-							key={meeting.id}
-							className="flex items-center justify-between rounded-md border border-zinc-200 p-3 text-sm"
-						>
-							<div>
-								<p className="font-medium">{meeting.id}</p>
-								<p className="text-zinc-500">
-									{meeting.ended ? 'Afsluttet' : 'Aktivt'} ·{' '}
-									{meeting.peakUserCount} deltagere på det højeste
-								</p>
-							</div>
-							{!meeting.ended && meeting.roomName && (
-								<Link
-									to={`/admin/rooms/${meeting.roomName}`}
-									className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-								>
-									Styr live
-								</Link>
-							)}
-						</li>
-					))}
-				</ul>
-			</section>
-
-			<Disclaimer />
+			</div>
 		</div>
 	)
 }

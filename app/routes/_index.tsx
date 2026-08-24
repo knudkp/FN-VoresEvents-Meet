@@ -16,6 +16,7 @@ import { useState } from 'react'
 import { getDb, Meetings } from 'schema'
 import invariant from 'tiny-invariant'
 import { AdminLoginDialog } from '~/components/AdminLoginDialog'
+import { AdminPanelDialog } from '~/components/AdminPanelDialog'
 import { AuthChoiceForm } from '~/components/AuthChoiceForm'
 import { BrandPanel } from '~/components/BrandPanel'
 import { Button } from '~/components/Button'
@@ -270,16 +271,7 @@ function Dashboard({
 					})()}
 
 					<div className="mt-8">
-						{isAdmin ? (
-							<a
-								href="/admin"
-								className="text-xs text-zinc-400 underline hover:text-zinc-600"
-							>
-								Admin
-							</a>
-						) : (
-							<AdminLoginDialog />
-						)}
+						{isAdmin ? <AdminPanelDialog /> : <AdminLoginDialog />}
 					</div>
 				</div>
 			</div>

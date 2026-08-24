@@ -1,0 +1,132 @@
+fleksMeet — status på admin-adgang
+Sidst opdateret: 2026-08-23
+
+==================================================
+HVOR LANGT ER VI KOMMET
+==================================================
+
+PROBLEM (start på sessionen):
+Du havde mistet adgangskoden til admin-kontoen. Kunne hverken logge ind
+via forsiden eller via /admin/login.
+
+LØST — status nu: ADMIN-ADGANG VIRKER
+Du kan logge ind via https://tjekind.voresevents.com/
+  -> vælg "Som admin"-fanen
+  -> brugernavn: admin
+  -> din nye adgangskode (sat via set-password-linket i denne session)
+Naviger derefter direkte til https://tjekind.voresevents.com/admin
+(skriv URL'en selv) — dashboardet loader korrekt, bekræftet med
+skærmbillede.
+
+==================================================
+HVAD VAR GALT (tre ting, alle rettet og pushet til main)
+==================================================
+
+1. D1-databasen var ikke koblet til worker'en.
+   Databasen (fn-voresevents-meet-db) fandtes fint i Cloudflare-kontoen
+   med alle tabeller og data, men wrangler.toml havde D1-bindingen
+   udkommenteret, så koden aldrig kunne se den.
+   Fix: wrangler.toml rettet med det rigtige database_id, pushet.
+
+2. En rigtig admin-brugerkonto fandtes allerede i databasen
+   (brugernavn "admin", rolle Admin, aktiveret) — den var IKKE fundet
+   på grund af punkt 1 ovenfor. Adgangskoden til den blev nulstillet
+   direkte i databasen (uden at kende den gamle) via et nyt script.
+
+3. To kodefiler (app/session.ts og app/adminSession.ts) manglede en
+   navnekonvention Remix kræver for at holde dem ude af den kode der
+   sendes til browseren. Resultat: admin-login crashede i browseren
+   med en JavaScript-fejl, og klik på "admin" endte tilbage på
+   "Klar til møde" i stedet for at gå ind i dashboardet.
+   Fix: filerne omdøbt, alle steder der bruger dem opdateret, testet
+   lokalt (build+typecheck+lint+tests grønne), pushet.
+
+==================================================
+NYT VÆRKTØJ TIL FREMTIDIGE LOCKOUTS
+==================================================
+
+scripts/reset-admin-access.mjs (i repoet, committet)
+
+  node scripts/reset-admin-access.mjs user <brugernavn>
+    -> laver et nyt engangs-link til /set-password for den konto,
+       uden at skulle kende den gamle adgangskode eller være logget
+       ind i forvejen.
+
+  node scripts/reset-admin-access.mjs master
+    -> sætter en ny HOST_PASSWORD (den delte master-adgangskode)
+       interaktivt.
+
+Kræver kun at man er logget ind med "wrangler login" mod jeres
+Cloudflare-konto — ingen bagdør i selve appen.
+
+==================================================
+ÅBENT PUNKT — RETTET 2026-08-24
+==================================================
+
+"Admin"-linket nederst på forsidens dashboard ("Klar til møde"-skærmen)
+åbnede en popup der prøvede at logge ind med ADMIN_USERNAME+HOST_PASSWORD
+(de secrets der aldrig er sat i denne deployment) — virkede derfor ALDRIG,
+selvom man allerede var logget ind som den rigtige admin-konto.
+
+Rettet: linket går nu direkte til /admin når du allerede er logget ind
+som admin, i stedet for at vise login-popup'en. Pushet til main
+(commit e0498ba). Detaljer i CLAUDE.md's Log (2026-08-24).
+
+==================================================
+COMMITS FRA DENNE SESSION (main-branch, alle pushet)
+==================================================
+
+- Bind D1 database in wrangler.toml and add admin-access reset script
+- Fix session/adminSession modules leaking into client bundle
+- Log the client-bundle session leak in CLAUDE.md
+
+Fuld teknisk detalje står i CLAUDE.md's Log-sektion i repoet (dateret
+2026-08-23), og er også gemt i Claudes hukommelsessystem så det huskes
+automatisk i næste samtale.
+
+==================================================
+NÆSTE OPGAVE — Admin-panel som modal (2026-08-24)
+==================================================
+
+Ovenstående (admin-adgang) VIRKER og er afsluttet. Ny opgave, bestilt af
+brugeren:
+
+Når man er logget ind som admin og klikker "Admin"-linket på "Klar til
+møde"-skærmen, åbner /admin i dag i samme fane (fuld side-navigation).
+Ønsket i stedet:
+
+1. Admin-linket skal åbne admin-panelet i en MODAL (ikke navigere væk
+   fra "Klar til møde"). Modalen skal have:
+   - en X-luk-knap
+   - en "Luk"-knap
+   - en "Gem indstillinger"-knap
+2. Modalen skal have en lodret menu i venstre side med LYSEGUL
+   baggrundsfarve, og menupunkterne skal være grupperet.
+3. Der skal være et "System log"-menupunkt i menuen.
+
+STATUS: Implementeret i denne session (endnu ikke pushet da denne note
+blev skrevet — se commit-loggen i CLAUDE.md for om det efterfølgende
+blev pushet):
+- [app/components/AdminPanel.tsx](app/components/AdminPanel.tsx) — delt
+  menu (`AdminNav`, grupperet i "Administration" og "Overblik") og
+  indhold (`AdminPanelSections`) for alle admin-faner (Brugere, Rum,
+  Møder, System log), brugt af både den fulde /admin-side og modalen.
+  Menuen har lysegul baggrund (`bg-yellow-50` / mørk `bg-yellow-950/30`).
+- [app/components/AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx)
+  — selve modalen (Radix Dialog), med X-luk (`DialogClose`), "Luk"- og
+  "Gem indstillinger"-knapper. Henter data via `useFetcher` mod /admin
+  i stedet for en sideskift.
+- [app/components/Dialog.tsx](app/components/Dialog.tsx) — `DialogClose`
+  eksporteret (var kun internt brugt før) så modalen kan genbruge den.
+- [app/routes/_index.tsx](app/routes/_index.tsx) — viser `AdminPanelDialog`
+  i stedet for et almindeligt `<a href="/admin">`-link når `isAdmin`.
+- [app/routes/admin.tsx](app/routes/admin.tsx) — selve /admin-siden
+  (direkte URL-adgang) er omskrevet til at bruge de samme delte
+  komponenter (`AdminNav` + `AdminPanelSections`), plus ny audit-log
+  (`AdminAuditLog`-tabellen, fandtes allerede i `schema.ts`) der logger
+  handlinger som opret/slet bruger, slet rum, gensend invite, gem
+  rum-indstillinger — vist under "System log"-fanen.
+- `npm run check`/`typecheck`/`test:ci`/`remix build` grønne lokalt før
+  push (prettier fejler stadig bredt på hele repoet pga.
+  `core.autocrlf=true` på Windows — pre-eksisterende støj, se
+  2026-08-24-loggen i CLAUDE.md, ikke noget nyt introduceret her).

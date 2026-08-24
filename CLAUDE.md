@@ -261,3 +261,21 @@ typecheck-fejl kan ligge skjult sådan.
   `prettier --check` fejler bredt uafhængigt af denne ændring pga.
   `core.autocrlf=true` på denne Windows-maskine — pre-eksisterende
   miljøstøj, ikke noget nyt introduceret her). Pushet til main.
+- **2026-08-24**: Admin-panelet åbnes nu som **modal** i stedet for at
+  navigere til /admin i samme fane, efter brugerønske. Detaljer og
+  filliste i [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s
+  "NÆSTE OPGAVE"-afsnit. Kort opsummeret: delt `AdminNav`/
+  `AdminPanelSections` i
+  [app/components/AdminPanel.tsx](app/components/AdminPanel.tsx) bruges
+  af både den fulde /admin-side og den nye
+  [app/components/AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx)
+  (Radix Dialog med X-luk, "Luk"- og "Gem indstillinger"-knapper,
+  data hentet via `useFetcher`). Venstremenuen er grupperet
+  ("Administration": Brugere/Rum, "Overblik": Møder/System log) med
+  lysegul baggrund (`bg-yellow-50`/`dark:bg-yellow-950/30`). Nyt
+  "System log"-menupunkt viser `AdminAuditLog`-tabellen (fandtes
+  allerede i skemaet); admin.tsx's action logger nu til den ved
+  opret/slet bruger, slet rum, gensend invite, gem rum-indstillinger.
+  `npm run check`/`typecheck`/`test:ci`/`remix build` grønne lokalt
+  (prettier-støjen er stadig pre-eksisterende Windows-CRLF-støj, se
+  ovenstående logpost).
