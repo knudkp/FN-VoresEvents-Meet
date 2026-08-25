@@ -9,6 +9,7 @@ import { requireAdmin } from '~/adminSession.server'
 import { Button } from '~/components/Button'
 import type { Env } from '~/types/Env'
 import type { User } from '~/types/Messages'
+import getUsername from '~/utils/getUsername.server'
 
 interface RoomAdminState {
 	meetingId?: string
@@ -55,6 +56,7 @@ export const action = async ({
 	await requireAdmin(request)
 	const roomName = params.roomName
 	invariant(roomName)
+	const actorName = (await getUsername(request)) ?? 'Admin'
 
 	const formData = await request.formData()
 	const intent = formData.get('intent')
@@ -62,35 +64,38 @@ export const action = async ({
 	if (intent === 'lock' || intent === 'unlock') {
 		await callRoom(context.env, roomName, '/admin/lock', {
 			method: 'POST',
-			body: JSON.stringify({ locked: intent === 'lock' }),
+			body: JSON.stringify({ locked: intent === 'lock', actorName }),
 		})
 	} else if (intent === 'enable-chat' || intent === 'disable-chat') {
 		await callRoom(context.env, roomName, '/admin/toggle-chat', {
 			method: 'POST',
-			body: JSON.stringify({ enabled: intent === 'enable-chat' }),
+			body: JSON.stringify({ enabled: intent === 'enable-chat', actorName }),
 		})
 	} else if (intent === 'mute-all') {
-		await callRoom(context.env, roomName, '/admin/mute-all', { method: 'POST' })
+		await callRoom(context.env, roomName, '/admin/mute-all', {
+			method: 'POST',
+			body: JSON.stringify({ actorName }),
+		})
 	} else if (intent === 'kick') {
 		const id = formData.get('userId')
 		invariant(typeof id === 'string')
 		await callRoom(context.env, roomName, '/admin/kick', {
 			method: 'POST',
-			body: JSON.stringify({ id }),
+			body: JSON.stringify({ id, actorName }),
 		})
 	} else if (intent === 'ban-ip') {
 		const id = formData.get('userId')
 		invariant(typeof id === 'string')
 		await callRoom(context.env, roomName, '/admin/ban-ip', {
 			method: 'POST',
-			body: JSON.stringify({ id }),
+			body: JSON.stringify({ id, actorName }),
 		})
 	} else if (intent === 'ban-username') {
 		const id = formData.get('userId')
 		invariant(typeof id === 'string')
 		await callRoom(context.env, roomName, '/admin/ban-username', {
 			method: 'POST',
-			body: JSON.stringify({ id }),
+			body: JSON.stringify({ id, actorName }),
 		})
 	}
 

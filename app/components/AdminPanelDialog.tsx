@@ -42,16 +42,16 @@ export function AdminPanelDialog() {
 				<RadixDialog.Content
 					className={cn(
 						'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-						'flex h-[85vh] w-[min(1100px,96vw)] flex-col overflow-hidden',
-						'rounded-lg bg-white shadow-xl',
-						'dark:bg-zinc-900 dark:shadow-none'
+						'flex h-[85vh] w-[min(1100px,96vw)] flex-row overflow-hidden',
+						'rounded-lg bg-white shadow-2xl',
+						'dark:bg-zinc-900'
 					)}
 				>
-					<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-5 pr-14 dark:border-zinc-700">
-						<DialogTitle>Admin</DialogTitle>
-					</div>
-					<div className="flex min-h-0 flex-1">
-						<AdminNav activeTab={activeTab} onTabChange={setActiveTab} />
+					<AdminNav activeTab={activeTab} onTabChange={setActiveTab} />
+					<div className="flex min-h-0 flex-1 flex-col">
+						<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-5 pr-14 dark:border-zinc-700">
+							<DialogTitle>Admin</DialogTitle>
+						</div>
 						<div className="min-h-0 flex-1 overflow-y-auto p-8">
 							{data ? (
 								<AdminPanelSections
@@ -64,15 +64,15 @@ export function AdminPanelDialog() {
 								<p className="text-sm text-zinc-500">Henter...</p>
 							)}
 						</div>
-					</div>
-					<div className="flex items-center justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-700">
-						<Button
-							type="button"
-							displayType="secondary"
-							onClick={() => setOpen(false)}
-						>
-							Luk
-						</Button>
+						<div className="flex items-center justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-700">
+							<Button
+								type="button"
+								displayType="secondary"
+								onClick={() => setOpen(false)}
+							>
+								Luk
+							</Button>
+						</div>
 					</div>
 					<DialogClose />
 				</RadixDialog.Content>

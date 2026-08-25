@@ -382,3 +382,42 @@ typecheck-fejl kan ligge skjult sådan.
   testdata (brugere/rum/møder/bans) på tværs af alle faner, ingen
   konsol-fejl. `npm run check`/`remix build` grønne lokalt før push.
   Ingen skema-ændring, ingen migration.
+- **2026-08-25**: Endnu en runde admin-panel-rettelser, denne gang ud
+  fra et konkret skærmbillede af PRODUKTIONEN (ikke bare "grimt" i
+  generelle vendinger) — se
+  [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s femte
+  "NÆSTE OPGAVE"-afsnit for fuld detalje. Højdepunkter:
+  - Modal-skyggen var slået fra i mørk tilstand
+    (`dark:shadow-none`, kopieret uden omtanke fra
+    [Dialog.tsx](app/components/Dialog.tsx)) — fjernet, `shadow-2xl`
+    gælder nu altid.
+  - Hele layoutet omstruktureret: navy-menuen var kun placeret i
+    midter-rækken mellem en fuld-bredde header/footer i stedet for at
+    være en ægte fuld-højde venstre-kolonne (Stripe/Vercel-mønster).
+    Rettet i både [AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx)
+    og [admin.tsx](app/routes/admin.tsx) — yderste container er nu
+    `flex-row` med menuen som fuld-højde første barn.
+  - "Opret bruger"/"Konfigurér rum": submit-knappen brugte den fulde
+    CTA-stil (`border-4 uppercase tracking-widest`) på en lang tekst,
+    placeret skævt i samme grid-celle som Rolle-dropdown'et — ny
+    `formSubmitButtonClassName` (normal tekst, `border-2`) på sin egen
+    række. Fandt undervejs en ægte layout-bug: Rolle-feltets label og
+    select stod ved siden af hinanden i stedet for stablet
+    (`max-w-xs` på selecten forhindrede linjeskift) — rettet.
+  - Møder-tabellens "usynlige streger": `border-zinc-200` var for lav
+    kontrast i lyst tema — strammet til `zinc-300` konsekvent, plus
+    ryddet en dobbelt border-deklaration.
+  - **To ægte bugs fundet i System log ved at læse koden, ikke kun
+    kosmetik**: `hostClaimed`-handlingen manglede i `actionLabels` og
+    viste derfor det rå navn "hostClaimed" — tilføjet dansk label.
+    Og: alle handlinger fra "Styr live"-siden
+    ([admin_.rooms.$roomName.tsx](app/routes/admin_.rooms.$roomName.tsx))
+    blev logget med hårdkodet "Admin" uanset hvilken admin der faktisk
+    var logget ind — den rigtige brugers navn sendes nu med til
+    Durable Object'et og bruges som `actorName`.
+  - Ryddet dødt kode (`formId`/`adminTabFormId`, rest fra en tidligere
+    fjernet knap).
+  - Verificeret visuelt med Playwright inkl. en seedet `hostClaimed`-
+    og `lockRoom`-hændelse tilskrevet en navngiven admin for at
+    bekræfte System log-rettelserne. `npm run check`/`remix build`
+    grønne lokalt før push. Ingen skema-ændring, ingen migration.

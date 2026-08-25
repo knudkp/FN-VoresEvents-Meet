@@ -75,30 +75,22 @@ export const ADMIN_TAB_GROUPS = [
 	{
 		label: 'Administration',
 		items: [
-			{ id: 'users', label: 'Brugere', formId: 'admin-users-form' },
-			{ id: 'rooms', label: 'Rum', formId: 'admin-rooms-form' },
-			{ id: 'banned', label: 'Bannede', formId: undefined },
+			{ id: 'users', label: 'Brugere' },
+			{ id: 'rooms', label: 'Rum' },
+			{ id: 'banned', label: 'Bannede' },
 		],
 	},
 	{
 		label: 'Overblik',
 		items: [
-			{ id: 'meetings', label: 'Møder', formId: undefined },
-			{ id: 'auditLog', label: 'System log', formId: undefined },
+			{ id: 'meetings', label: 'Møder' },
+			{ id: 'auditLog', label: 'System log' },
 		],
 	},
 ] as const
 
 export type AdminTabId =
 	(typeof ADMIN_TAB_GROUPS)[number]['items'][number]['id']
-
-export function adminTabFormId(tab: AdminTabId): string | undefined {
-	for (const group of ADMIN_TAB_GROUPS) {
-		const item = group.items.find((i) => i.id === tab)
-		if (item) return item.formId
-	}
-	return undefined
-}
 
 const roleLabels = {
 	admin: 'Admin',
@@ -130,6 +122,7 @@ const actionLabels: Record<string, string> = {
 	configureRoom: 'Gemte rum-indstillinger',
 	unbanIp: 'Ophævede IP-ban',
 	unbanUsername: 'Ophævede brugerban',
+	hostClaimed: 'Blev vært for mødet',
 }
 
 function parseSqliteDate(value: string): Date {
@@ -153,6 +146,8 @@ const rowButtonClassName =
 
 const formPanelClassName =
 	'grid gap-x-6 gap-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50 sm:grid-cols-2'
+const formSubmitButtonClassName =
+	'w-full border-2 normal-case tracking-normal sm:w-auto'
 
 const sectionHeadingClassName = 'text-base font-semibold text-zinc-900 dark:text-zinc-50'
 const sectionSubtextClassName = 'text-sm text-zinc-500 dark:text-zinc-400'
@@ -160,14 +155,14 @@ const emptyStateClassName =
 	'rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'
 
 const tableWrapperClassName =
-	'overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700'
+	'overflow-x-auto rounded-lg border border-zinc-300 dark:border-zinc-700'
 const tableClassName = 'w-full min-w-[36rem] text-left text-sm'
 const theadClassName =
-	'bg-zinc-100 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-const thClassName = 'px-4 py-2.5'
+	'bg-zinc-100 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+const thClassName = 'border-b border-zinc-300 px-4 py-2.5 dark:border-zinc-700'
 const tdClassName = 'px-4 py-3 align-top'
 const trClassName =
-	'divide-y divide-zinc-200 bg-white dark:divide-zinc-700 dark:bg-zinc-900/40 [&>tr]:border-t [&>tr]:border-zinc-200 dark:[&>tr]:border-zinc-700 [&>tr:first-child]:border-t-0 [&>tr]:transition-colors hover:[&>tr]:bg-zinc-50 dark:hover:[&>tr]:bg-zinc-800/40'
+	'divide-y divide-zinc-300 bg-white dark:divide-zinc-700 dark:bg-zinc-900/40 [&>tr]:transition-colors hover:[&>tr]:bg-zinc-50 dark:hover:[&>tr]:bg-zinc-800/40'
 
 function SectionHeader({
 	title,
@@ -803,7 +798,7 @@ export function AdminPanelSections({
 								<Label htmlFor="email">E-mail</Label>
 								<Input id="email" name="email" type="email" required />
 							</div>
-							<div className="space-y-2">
+							<div className="space-y-2 sm:col-span-2 sm:max-w-xs">
 								<Label htmlFor="role">Rolle</Label>
 								<select
 									id="role"
@@ -817,8 +812,10 @@ export function AdminPanelSections({
 									<option value="admin">Admin</option>
 								</select>
 							</div>
-							<div className="flex items-end">
-								<Button type="submit">Opret og send invitation</Button>
+							<div className="sm:col-span-2">
+								<Button type="submit" className={formSubmitButtonClassName}>
+									Opret og send invitation
+								</Button>
 							</div>
 						</Form>
 					</section>
@@ -895,7 +892,9 @@ export function AdminPanelSections({
 								<Input id="password" name="password" type="password" />
 							</div>
 							<div className="sm:col-span-2">
-								<Button type="submit">Gem rum</Button>
+								<Button type="submit" className={formSubmitButtonClassName}>
+									Gem rum
+								</Button>
 							</div>
 						</Form>
 					</section>

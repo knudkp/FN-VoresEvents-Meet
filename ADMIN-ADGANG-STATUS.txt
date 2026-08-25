@@ -385,3 +385,88 @@ ingen konsol-fejl.
 lokalt før push. Ingen skema-ændring, ingen migration nødvendig.
 
 STATUS: pushet til main.
+
+==================================================
+NÆSTE OPGAVE — Konkrete rettelser fra et rigtigt
+skærmbillede af produktion (2026-08-25, femte opfølgende bestilling)
+==================================================
+
+Brugeren sendte et skærmbillede af det RIGTIGE produktions-panel
+(tjekind.voresevents.com, med hans egen konto "knudkp") med seks
+konkrete punkter:
+
+1. Modalen skal have en skygge under sig.
+2. Menudelen skal fylde HELE højden af pop op'en (ikke kun midter-
+   sektionen mellem header og footer).
+3. Hele "Opret bruger"-designet er grimt.
+4. Brugerlisten er "som sådan ok" (rørt ikke).
+5. "Konfigurér rum" er grimt.
+6. "Møder" er grimt og "nærmest ikke til at se — stregerne er
+   usynlige osv."
+7. "System log virker ikke. Så fix det, gør det intuitivt."
+
+RETTET:
+- **Skygge**: modalen brugte `shadow-xl dark:shadow-none` — sidste
+  klasse fjernede skyggen helt i mørk tilstand (kopieret uden omtanke
+  fra den delte `Dialog.tsx`). Rettet til `shadow-2xl` uden
+  dark-undtagelse.
+- **Menu fylder hele højden**: hele layoutet var forkert struktureret
+  — navy-menuen sad kun i midter-rækken (mellem en fuld-bredde header
+  og footer), i stedet for at være en ægte fuld-højde venstre-kolonne
+  (som fx Stripe/Vercel-dashboards). Omstruktureret i både
+  [AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx) og
+  [admin.tsx](app/routes/admin.tsx): den yderste container er nu
+  `flex-row` med `AdminNav` som første, fuld-højde barn, og header +
+  content + footer er nu en `flex-col`-kolonne til HØJRE for menuen —
+  ikke ovenpå/under den.
+- **Opret bruger / Konfigurér rum**: rod-årsag var at submit-knappen
+  sad i samme grid-celle som Rolle-dropdown'et med
+  `border-4 uppercase tracking-widest` (den fulde CTA-stil) på en
+  lang tekst ("Opret og send invitation") — blev meget dominerende og
+  skævt placeret. Ny `formSubmitButtonClassName` (normal
+  bogstavstørrelse, ikke versaler, `border-2` i stedet for `border-4`)
+  + knappen flyttet til sin egen række under alle felter. Fandt også
+  en reel layout-bug undervejs: Rolle-feltets `<Label>` og `<select>`
+  stod ved siden af hinanden i stedet for stablet, fordi selecten
+  havde `max-w-xs` (for smal til at tvinge et linjeskift) — flyttet
+  `max-w-xs` til den omsluttende `<div>` og givet selecten `w-full`
+  igen, så den stabler som de andre felter.
+- **Møder — "usynlige streger"**: tabellernes kant/skillelinje-farve
+  var `border-zinc-200`/`divide-zinc-200`, for lav kontrast mod hvid
+  baggrund i lyst tema. Strammet til `zinc-300` konsekvent
+  (`tableWrapperClassName`, `thClassName`, `trClassName`). Ryddede også
+  en dobbelt/redundant border-deklaration (både `divide-y` OG en
+  `[&>tr]:border-t`-arbitrary-selector satte kantlinjer samtidig).
+- **System log "virker ikke"**: to reelle bugs fundet ved at læse
+  koden igennem, ikke kun kosmetik:
+  1. `hostClaimed`-handlingen (logges når nogen bliver vært via
+     password i selve mødet) manglede i `actionLabels`-oversættelses-
+     tabellen — viste derfor det rå interne navn "hostClaimed" i
+     stedet for en menneskelig tekst. Tilføjet: "Blev vært for mødet".
+  2. Handlinger udført fra "Styr live"-siden
+     ([admin_.rooms.$roomName.tsx](app/routes/admin_.rooms.$roomName.tsx):
+     lås/lås op, chat til/fra, mute alle, fjern, ban IP, ban bruger)
+     blev ALLE logget med det hårdkodede navn "Admin", uanset hvilken
+     admin der rent faktisk var logget ind og klikkede — umuligt at se
+     hvem der gjorde hvad, hvis der er flere admin-konti. Rettet: den
+     rigtige indloggede brugers navn (`getUsername(request)`) sendes nu
+     med i hvert POST-kald til Durable Object'et og bruges som
+     `actorName` i stedet for det hårdkodede "Admin".
+- Ryddet dødt kode: `formId`-felterne på `ADMIN_TAB_GROUPS` og
+  `adminTabFormId`-funktionen var ikke længere brugt af noget (rest
+  fra "Gem indstillinger"-knappen der blev fjernet i forrige runde) —
+  fjernet.
+
+VERIFICERET visuelt med Playwright: seedet realistisk testdata
+inkl. en `hostClaimed`-hændelse og en `lockRoom`-hændelse tilskrevet
+en navngiven admin ("Sofie") for at bekræfte System log-rettelserne.
+Bekræftet: skygge synlig, menu fylder hele pop op'ens højde (header
+og footer sidder nu til højre for menuen, ikke ovenpå/under), Opret
+bruger/Konfigurér rum ser ordentlige ud, Møder-tabellens linjer er nu
+tydeligt synlige, System log viser "Blev vært for mødet" og "Sofie"
+korrekt i stedet for hhv. "hostClaimed" og "Admin". Ingen konsol-fejl.
+
+`npm run typecheck`/eslint (målrettet)/`test:ci`/`remix build` grønne
+lokalt før push. Ingen skema-ændring, ingen migration nødvendig.
+
+STATUS: pushet til main.

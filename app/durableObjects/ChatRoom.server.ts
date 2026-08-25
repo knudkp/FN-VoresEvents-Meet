@@ -1114,37 +1114,59 @@ export class ChatRoom extends Server<Env> {
 		}
 
 		if (pathname === '/admin/lock' && request.method === 'POST') {
-			const { locked } = (await request.json()) as { locked: boolean }
-			await this.performLock(locked, 'admin', 'Admin')
+			const { locked, actorName } = (await request.json()) as {
+				locked: boolean
+				actorName?: string
+			}
+			await this.performLock(locked, 'admin', actorName ?? 'Admin')
 			return Response.json({ ok: true })
 		}
 
 		if (pathname === '/admin/toggle-chat' && request.method === 'POST') {
-			const { enabled } = (await request.json()) as { enabled: boolean }
-			await this.performToggleChat(enabled, 'admin', 'Admin')
+			const { enabled, actorName } = (await request.json()) as {
+				enabled: boolean
+				actorName?: string
+			}
+			await this.performToggleChat(enabled, 'admin', actorName ?? 'Admin')
 			return Response.json({ ok: true })
 		}
 
 		if (pathname === '/admin/mute-all' && request.method === 'POST') {
-			await this.performMuteAll('admin', 'Admin')
+			const { actorName } = (await request.json().catch(() => ({}))) as {
+				actorName?: string
+			}
+			await this.performMuteAll('admin', actorName ?? 'Admin')
 			return Response.json({ ok: true })
 		}
 
 		if (pathname === '/admin/kick' && request.method === 'POST') {
-			const { id } = (await request.json()) as { id: string }
-			const kicked = await this.performKick(id, 'admin', 'Admin')
+			const { id, actorName } = (await request.json()) as {
+				id: string
+				actorName?: string
+			}
+			const kicked = await this.performKick(id, 'admin', actorName ?? 'Admin')
 			return Response.json({ ok: kicked })
 		}
 
 		if (pathname === '/admin/ban-ip' && request.method === 'POST') {
-			const { id } = (await request.json()) as { id: string }
-			const banned = await this.performBanIp(id, 'admin', 'Admin')
+			const { id, actorName } = (await request.json()) as {
+				id: string
+				actorName?: string
+			}
+			const banned = await this.performBanIp(id, 'admin', actorName ?? 'Admin')
 			return Response.json({ ok: banned })
 		}
 
 		if (pathname === '/admin/ban-username' && request.method === 'POST') {
-			const { id } = (await request.json()) as { id: string }
-			const banned = await this.performBanUsername(id, 'admin', 'Admin')
+			const { id, actorName } = (await request.json()) as {
+				id: string
+				actorName?: string
+			}
+			const banned = await this.performBanUsername(
+				id,
+				'admin',
+				actorName ?? 'Admin'
+			)
 			return Response.json({ ok: banned })
 		}
 
