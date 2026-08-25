@@ -510,3 +510,69 @@ proportionerede. Ingen konsol-fejl.
 lokalt før push. Ingen skema-ændring, ingen migration nødvendig.
 
 STATUS: pushet til main.
+
+==================================================
+NÆSTE OPGAVE — Rigtig kalendervisning (2026-08-25, syvende
+opfølgende bestilling)
+==================================================
+
+Brugeren spurgte direkte: "Kan du se, at der mellem linjerne, kolonner
+og rækker ikke er tydelige streger, ligesom man ser i Outlook på
+agenda-visning, dagsvisning osv?" — dvs. det jeg havde bygget hidtil
+var en FILTRERET LISTE med en periode-vælger (‹ August 2026 ›), ikke
+en rigtig kalender med et synligt gitter af rækker/kolonner sådan som
+Outlook viser Måned/Uge/Dag. Bekræftet: nej, det var netop det der
+manglede.
+
+BYGGET (rigtig ny funktionalitet, ikke kun styling):
+- **Måned**: et ægte kalendergitter — 7 kolonner (Man-Søn), en række
+  pr. uge (fulde uger, inkl. dage fra forrige/næste måned gråtonet),
+  synlige gitterlinjer mellem hver dag-celle (`gap-px` + farvet
+  baggrund-trick, samme teknik som Google Calendar/Outlook bruger for
+  skarpe 1px-streger). Dagens dato er ringet ind i teal. Op til 3
+  møde-navne vises som små pills i hver dag-celle, "+N mere" hvis der
+  er flere.
+- **Arbejdsuge**: 5 kolonner (Man-Fre) side om side med synlige
+  lodrette skillelinjer, hver kolonne viser den dags møder i fuld
+  detalje (status, tidspunkt, Styr live/Slet).
+- **År**: et 12-celle gitter (én pr. måned) med synlige linjer,
+  hver celle viser månedsnavn + antal møder.
+- **Klik-for-at-dykke-ned**: klik på en dag-celle i Måned (eller en
+  måned-celle i År) skifter automatisk til hhv. Dag- eller Måned-
+  visning for det valgte punkt — samme interaktionsmønster som
+  Outlook/Google Calendar.
+- **Dag**: uændret koncept, men nu tydeligt indrammet som et
+  kalender-"felt" i stedet for en løs liste.
+- **Agenda**: uændret (flad tabel, havde allerede synlige linjer).
+- Fandt og rettede en lille sprogfejl undervejs mens jeg kiggede
+  nærmere efter: periode-labelen brugte CSS `capitalize`, som gør
+  STORT begyndelsesbogstav på HVERT ord — "Mandag Den 3. August 2026"
+  i stedet for korrekt dansk "Mandag den 3. august 2026". Erstattet
+  med en `capitalizeFirst()`-hjælpefunktion der kun stort forbogstav
+  på selve strengen.
+
+VERIFICERET visuelt med Playwright: seedet møder spredt over flere
+dage i august 2026 for at se gitteret befolket meningsfuldt i alle
+fire nye visninger, plus testet klik-dyk-ned fra Måned til Dag.
+
+Teknisk detalje: npm-kommandoen (`npm run ...`) fejlede midt i denne
+session med en npm-intern fejl ("Cannot find module 'node-gyp/bin/
+node-gyp.js'") i den portable Node-installation fra scratchpad'en —
+uklart hvorfor, ikke undersøgt nærmere da det er en engangs-scratch-
+mappe der ryddes mellem sessioner alligevel. Virkende workaround
+brugt resten af sessionen: kør de underliggende værktøjer direkte via
+node i stedet for npm/npx, fx
+`node ./node_modules/typescript/bin/tsc --noEmit --skipLibCheck`,
+`node ./node_modules/eslint/bin/eslint.js <filer>`,
+`node ./node_modules/vitest/vitest.mjs run`,
+`node ./node_modules/@remix-run/dev/dist/cli.js build`,
+`node ./node_modules/wrangler/bin/wrangler.js d1 execute ...`. Alle
+gav identiske resultater til de tidligere `npm run`-kald i denne
+session, så det er udelukkende en lokal værktøjs-kæde-detalje, intet
+der påvirker selve appen eller Cloudflare-deploy.
+
+`tsc`/eslint/vitest/`remix build` grønne lokalt (via ovenstående
+node-direkte workaround) før push. Ingen skema-ændring, ingen
+migration nødvendig.
+
+STATUS: pushet til main.

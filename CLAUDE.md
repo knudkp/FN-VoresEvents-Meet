@@ -434,3 +434,27 @@ typecheck-fejl kan ligge skjult sådan.
   begrænset bredde. Verificeret visuelt med Playwright på seedet
   mødedata i både Agenda- og Måned-visning. `npm run check`/
   `remix build` grønne lokalt før push. Ingen skema-ændring.
+- **2026-08-25**: Byggede en RIGTIG kalendergitter-visning til
+  Møder-fanen, efter brugeren specifikt spurgte om linjerne/kolonnerne/
+  rækkerne manglede "ligesom man ser i Outlook" — se
+  [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s syvende
+  "NÆSTE OPGAVE"-afsnit. Det forrige "Agenda/Dag/Arbejdsuge/Måned/År"
+  var kun en filtreret liste med en periode-vælger — ikke en rigtig
+  kalender. Nu: **Måned** er et ægte 7-kolonne kalendergitter (fulde
+  uger, dage udenfor måneden gråtonet, dagens dato ringet i teal, op
+  til 3 møde-pills pr. celle); **Arbejdsuge** er 5 dag-kolonner med
+  synlige skillelinjer; **År** er et 12-celle måneds-gitter. Klik på en
+  dag-celle (Måned) eller måned-celle (År) dykker automatisk ned til
+  hhv. Dag/Måned-visning for det valgte punkt (Outlook/Google Calendar-
+  mønster). Gitterlinjerne bruger `gap-px` + farvet baggrund-trick
+  (samme teknik som rigtige kalender-UI'er). Fandt og rettede en lille
+  sprogfejl undervejs: periode-labelen brugte CSS `capitalize` som
+  gjorde stort forbogstav på HVERT ord ("Mandag Den 3. August 2026")
+  — ny `capitalizeFirst()`-hjælper retter til korrekt dansk ("Mandag
+  den 3. august 2026"). NB: `npm`-kommandoen selv fejlede midt i
+  sessionen med en intern npm-fejl i den portable Node fra
+  scratchpad'en (uklart hvorfor, formentlig en engangs-ting, da
+  scratchpad ryddes mellem sessioner) — værktøjerne blev kørt direkte
+  via `node ./node_modules/.../...js` i stedet resten af sessionen med
+  identiske resultater, se status-filen for de præcise kommandoer hvis
+  det sker igen. Verificeret visuelt med Playwright.

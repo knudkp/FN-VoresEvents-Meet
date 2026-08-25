@@ -394,26 +394,39 @@ function isSameDay(a: Date, b: Date): boolean {
 	)
 }
 
-function meetingMatchesPeriod(
-	meeting: MeetingRow,
-	mode: MeetingViewMode,
-	refDate: Date
-): boolean {
-	if (mode === 'agenda') return true
-	const created = parseSqliteDate(meeting.created)
-	if (mode === 'day') return isSameDay(created, refDate)
-	if (mode === 'workweek') {
-		const start = startOfWorkWeek(refDate)
-		const end = addDays(start, 5)
-		return created >= start && created < end
+function isToday(date: Date): boolean {
+	return isSameDay(date, new Date())
+}
+
+function dayKey(date: Date): string {
+	return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function groupMeetingsByDay(
+	meetings: MeetingRow[]
+): Map<string, MeetingRow[]> {
+	const map = new Map<string, MeetingRow[]>()
+	for (const meeting of meetings) {
+		const key = dayKey(parseSqliteDate(meeting.created))
+		const list = map.get(key)
+		if (list) list.push(meeting)
+		else map.set(key, [meeting])
 	}
-	if (mode === 'month') {
-		return (
-			created.getFullYear() === refDate.getFullYear() &&
-			created.getMonth() === refDate.getMonth()
-		)
-	}
-	return created.getFullYear() === refDate.getFullYear()
+	return map
+}
+
+function getMonthGridDays(refDate: Date): Date[] {
+	const firstOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1)
+	const lastOfMonth = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0)
+	const gridStart = startOfWorkWeek(firstOfMonth)
+	const gridEnd = addDays(startOfWorkWeek(lastOfMonth), 6)
+	const days: Date[] = []
+	for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) days.push(d)
+	return days
+}
+
+function capitalizeFirst(value: string): string {
+	return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 function meetingPeriodLabel(mode: MeetingViewMode, refDate: Date): string {
@@ -469,6 +482,247 @@ function shiftMeetingRefDate(
 	return refDate
 }
 
+const WEEKDAY_LABELS = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
+
+function MeetingStatusBadge({ ended }: { ended: string | null }) {
+	return (
+		<span
+			className={cn(
+				'inline-block shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+				ended
+					? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+					: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+			)}
+		>
+			{ended ? 'Afsluttet' : 'Aktivt'}
+		</span>
+	)
+}
+
+function MeetingCompactRow({
+	meeting,
+	FormComponent: Form,
+}: {
+	meeting: MeetingRow
+	FormComponent: AdminFormComponent
+}) {
+	return (
+		<li className="space-y-1 border-b border-zinc-200 p-2 text-xs last:border-b-0 dark:border-zinc-700">
+			<div className="flex items-center justify-between gap-2">
+				<span className="truncate font-medium text-zinc-900 dark:text-zinc-50">
+					{meeting.roomName ?? meeting.id}
+				</span>
+				<MeetingStatusBadge ended={meeting.ended} />
+			</div>
+			<div className="flex items-center justify-between gap-2 text-zinc-500 dark:text-zinc-400">
+				<span>{formatLogDate(meeting.created)}</span>
+				<div className="flex shrink-0 items-center gap-2">
+					{!meeting.ended && meeting.roomName && (
+						<Link
+							to={`/admin/rooms/${meeting.roomName}`}
+							className="text-[#0d6d72] underline hover:text-[#0a565b]"
+						>
+							Styr live
+						</Link>
+					)}
+					<Form method="post" action="/admin" className="inline">
+						<input type="hidden" name="intent" value="deleteMeeting" />
+						<input type="hidden" name="meetingId" value={meeting.id} />
+						<button
+							type="submit"
+							className="text-red-600 underline hover:text-red-800 dark:text-red-400"
+						>
+							Slet
+						</button>
+					</Form>
+				</div>
+			</div>
+		</li>
+	)
+}
+
+function MonthGrid({
+	refDate,
+	meetingsByDay,
+	onSelectDay,
+}: {
+	refDate: Date
+	meetingsByDay: Map<string, MeetingRow[]>
+	onSelectDay: (day: Date) => void
+}) {
+	const days = useMemo(() => getMonthGridDays(refDate), [refDate])
+	return (
+		<div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-zinc-300 bg-zinc-300 dark:border-zinc-700 dark:bg-zinc-700">
+			{WEEKDAY_LABELS.map((label) => (
+				<div
+					key={label}
+					className="bg-zinc-100 px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+				>
+					{label}
+				</div>
+			))}
+			{days.map((day) => {
+				const inMonth = day.getMonth() === refDate.getMonth()
+				const dayMeetings = meetingsByDay.get(dayKey(day)) ?? []
+				return (
+					<button
+						key={day.toISOString()}
+						type="button"
+						onClick={() => onSelectDay(day)}
+						className={cn(
+							'flex min-h-[5.5rem] flex-col items-stretch gap-1 bg-white p-1.5 text-left transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/60',
+							!inMonth && 'bg-zinc-50 dark:bg-zinc-900/40'
+						)}
+					>
+						<span
+							className={cn(
+								'inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium',
+								isToday(day)
+									? 'bg-[#0d6d72] text-white'
+									: inMonth
+										? 'text-zinc-700 dark:text-zinc-300'
+										: 'text-zinc-400 dark:text-zinc-600'
+							)}
+						>
+							{day.getDate()}
+						</span>
+						<div className="space-y-0.5">
+							{dayMeetings.slice(0, 3).map((m) => (
+								<span
+									key={m.id}
+									className="block truncate rounded bg-[#0d6d72]/10 px-1 py-0.5 text-[10px] font-medium text-[#0b565b] dark:bg-[#0d6d72]/20 dark:text-teal-300"
+								>
+									{m.roomName ?? m.id}
+								</span>
+							))}
+							{dayMeetings.length > 3 && (
+								<span className="block text-[10px] text-zinc-500 dark:text-zinc-400">
+									+{dayMeetings.length - 3} mere
+								</span>
+							)}
+						</div>
+					</button>
+				)
+			})}
+		</div>
+	)
+}
+
+function YearGrid({
+	refDate,
+	meetings,
+	onSelectMonth,
+}: {
+	refDate: Date
+	meetings: MeetingRow[]
+	onSelectMonth: (month: Date) => void
+}) {
+	const year = refDate.getFullYear()
+	return (
+		<div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-zinc-300 bg-zinc-300 sm:grid-cols-3 md:grid-cols-4 dark:border-zinc-700 dark:bg-zinc-700">
+			{Array.from({ length: 12 }, (_, monthIndex) => {
+				const monthDate = new Date(year, monthIndex, 1)
+				const count = meetings.filter((m) => {
+					const created = parseSqliteDate(m.created)
+					return (
+						created.getFullYear() === year && created.getMonth() === monthIndex
+					)
+				}).length
+				return (
+					<button
+						key={monthIndex}
+						type="button"
+						onClick={() => onSelectMonth(monthDate)}
+						className="flex flex-col items-start gap-1 bg-white p-3 text-left transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/60"
+					>
+						<span className="text-sm font-semibold capitalize text-zinc-900 dark:text-zinc-50">
+							{monthDate.toLocaleDateString('da-DK', { month: 'long' })}
+						</span>
+						<span className="text-xs text-zinc-500 dark:text-zinc-400">
+							{count === 0 ? 'Ingen møder' : `${count} møde${count === 1 ? '' : 'r'}`}
+						</span>
+					</button>
+				)
+			})}
+		</div>
+	)
+}
+
+function WorkWeekGrid({
+	refDate,
+	meetingsByDay,
+	FormComponent,
+}: {
+	refDate: Date
+	meetingsByDay: Map<string, MeetingRow[]>
+	FormComponent: AdminFormComponent
+}) {
+	const start = startOfWorkWeek(refDate)
+	const days = [0, 1, 2, 3, 4].map((i) => addDays(start, i))
+	return (
+		<div className="grid grid-cols-1 divide-y divide-zinc-300 overflow-hidden rounded-lg border border-zinc-300 sm:grid-cols-5 sm:divide-x sm:divide-y-0 dark:divide-zinc-700 dark:border-zinc-700">
+			{days.map((day) => {
+				const dayMeetings = meetingsByDay.get(dayKey(day)) ?? []
+				return (
+					<div
+						key={day.toISOString()}
+						className="flex flex-col bg-white dark:bg-zinc-900"
+					>
+						<div
+							className={cn(
+								'border-b border-zinc-300 px-2 py-2 text-center text-xs font-semibold dark:border-zinc-700',
+								isToday(day)
+									? 'bg-[#0d6d72] text-white'
+									: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+							)}
+						>
+							{day.toLocaleDateString('da-DK', { weekday: 'short' })}{' '}
+							{day.getDate()}.
+						</div>
+						{dayMeetings.length === 0 ? (
+							<p className="p-2 text-center text-[11px] text-zinc-400 dark:text-zinc-600">
+								Ingen møder
+							</p>
+						) : (
+							<ul>
+								{dayMeetings.map((m) => (
+									<MeetingCompactRow
+										key={m.id}
+										meeting={m}
+										FormComponent={FormComponent}
+									/>
+								))}
+							</ul>
+						)}
+					</div>
+				)
+			})}
+		</div>
+	)
+}
+
+function DayList({
+	refDate,
+	meetingsByDay,
+	FormComponent,
+}: {
+	refDate: Date
+	meetingsByDay: Map<string, MeetingRow[]>
+	FormComponent: AdminFormComponent
+}) {
+	const dayMeetings = meetingsByDay.get(dayKey(refDate)) ?? []
+	if (dayMeetings.length === 0) {
+		return <p className={emptyStateClassName}>Ingen møder denne dag.</p>
+	}
+	return (
+		<ul className="divide-y divide-zinc-300 overflow-hidden rounded-lg border border-zinc-300 dark:divide-zinc-700 dark:border-zinc-700">
+			{dayMeetings.map((m) => (
+				<MeetingCompactRow key={m.id} meeting={m} FormComponent={FormComponent} />
+			))}
+		</ul>
+	)
+}
+
 function MeetingsSection({
 	meetings,
 	FormComponent: Form,
@@ -479,10 +733,7 @@ function MeetingsSection({
 	const [viewMode, setViewMode] = useState<MeetingViewMode>('agenda')
 	const [refDate, setRefDate] = useState(() => new Date())
 
-	const visibleMeetings = useMemo(
-		() => meetings.filter((m) => meetingMatchesPeriod(m, viewMode, refDate)),
-		[meetings, viewMode, refDate]
-	)
+	const meetingsByDay = useMemo(() => groupMeetingsByDay(meetings), [meetings])
 
 	return (
 		<section className="space-y-4">
@@ -522,8 +773,8 @@ function MeetingsSection({
 					>
 						‹
 					</button>
-					<p className="min-w-[14rem] text-center text-sm font-medium capitalize">
-						{meetingPeriodLabel(viewMode, refDate)}
+					<p className="min-w-[14rem] text-center text-sm font-medium">
+						{capitalizeFirst(meetingPeriodLabel(viewMode, refDate))}
 					</p>
 					<button
 						type="button"
@@ -538,86 +789,112 @@ function MeetingsSection({
 				</div>
 			)}
 
-			{visibleMeetings.length === 0 ? (
-				<p className={emptyStateClassName}>
-					{meetings.length === 0
-						? 'Ingen møder endnu.'
-						: 'Ingen møder i denne periode.'}
-				</p>
-			) : (
-				<div className={tableWrapperClassName}>
-					<table className={tableClassName}>
-						<thead className={theadClassName}>
-							<tr>
-								<th className={thClassName}>Møde</th>
-								<th className={thClassName}>Status</th>
-								<th className={thClassName}>Oprettet</th>
-								<th className={cn(thClassName, 'text-right')}>Handlinger</th>
-							</tr>
-						</thead>
-						<tbody className={trClassName}>
-							{visibleMeetings.map((meeting) => (
-								<tr key={meeting.id}>
-									<td className={tdClassName}>
-										<p className="font-medium text-zinc-900 dark:text-zinc-50">
-											{meeting.roomName ?? meeting.id}
-										</p>
-										<p className="text-zinc-500 dark:text-zinc-400">
-											{meeting.peakUserCount} deltagere på det højeste
-										</p>
-									</td>
-									<td className={tdClassName}>
-										<span
-											className={cn(
-												'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
-												meeting.ended
-													? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-													: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
-											)}
-										>
-											{meeting.ended ? 'Afsluttet' : 'Aktivt'}
-										</span>
-									</td>
-									<td className={cn(tdClassName, 'text-zinc-500 dark:text-zinc-400')}>
-										{formatLogDate(meeting.created)}
-									</td>
-									<td className={cn(tdClassName, 'text-right')}>
-										<div className="flex justify-end items-center gap-3">
-											{!meeting.ended && meeting.roomName && (
-												<Link
-													to={`/admin/rooms/${meeting.roomName}`}
-													className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-												>
-													Styr live
-												</Link>
-											)}
-											<Form method="post" action="/admin">
-												<input
-													type="hidden"
-													name="intent"
-													value="deleteMeeting"
-												/>
-												<input
-													type="hidden"
-													name="meetingId"
-													value={meeting.id}
-												/>
-												<Button
-													type="submit"
-													displayType="danger"
-													className={rowButtonClassName}
-												>
-													Slet
-												</Button>
-											</Form>
-										</div>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+			{viewMode === 'month' && (
+				<MonthGrid
+					refDate={refDate}
+					meetingsByDay={meetingsByDay}
+					onSelectDay={(day) => {
+						setRefDate(day)
+						setViewMode('day')
+					}}
+				/>
 			)}
+
+			{viewMode === 'year' && (
+				<YearGrid
+					refDate={refDate}
+					meetings={meetings}
+					onSelectMonth={(month) => {
+						setRefDate(month)
+						setViewMode('month')
+					}}
+				/>
+			)}
+
+			{viewMode === 'workweek' && (
+				<WorkWeekGrid
+					refDate={refDate}
+					meetingsByDay={meetingsByDay}
+					FormComponent={Form}
+				/>
+			)}
+
+			{viewMode === 'day' && (
+				<DayList
+					refDate={refDate}
+					meetingsByDay={meetingsByDay}
+					FormComponent={Form}
+				/>
+			)}
+
+			{viewMode === 'agenda' &&
+				(meetings.length === 0 ? (
+					<p className={emptyStateClassName}>Ingen møder endnu.</p>
+				) : (
+					<div className={tableWrapperClassName}>
+						<table className={tableClassName}>
+							<thead className={theadClassName}>
+								<tr>
+									<th className={thClassName}>Møde</th>
+									<th className={thClassName}>Status</th>
+									<th className={thClassName}>Oprettet</th>
+									<th className={cn(thClassName, 'text-right')}>Handlinger</th>
+								</tr>
+							</thead>
+							<tbody className={trClassName}>
+								{meetings.map((meeting) => (
+									<tr key={meeting.id}>
+										<td className={tdClassName}>
+											<p className="font-medium text-zinc-900 dark:text-zinc-50">
+												{meeting.roomName ?? meeting.id}
+											</p>
+											<p className="text-zinc-500 dark:text-zinc-400">
+												{meeting.peakUserCount} deltagere på det højeste
+											</p>
+										</td>
+										<td className={tdClassName}>
+											<MeetingStatusBadge ended={meeting.ended} />
+										</td>
+										<td className={cn(tdClassName, 'text-zinc-500 dark:text-zinc-400')}>
+											{formatLogDate(meeting.created)}
+										</td>
+										<td className={cn(tdClassName, 'text-right')}>
+											<div className="flex justify-end items-center gap-3">
+												{!meeting.ended && meeting.roomName && (
+													<Link
+														to={`/admin/rooms/${meeting.roomName}`}
+														className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
+													>
+														Styr live
+													</Link>
+												)}
+												<Form method="post" action="/admin">
+													<input
+														type="hidden"
+														name="intent"
+														value="deleteMeeting"
+													/>
+													<input
+														type="hidden"
+														name="meetingId"
+														value={meeting.id}
+													/>
+													<Button
+														type="submit"
+														displayType="danger"
+														className={rowButtonClassName}
+													>
+														Slet
+													</Button>
+												</Form>
+											</div>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				))}
 		</section>
 	)
 }
