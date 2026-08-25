@@ -470,3 +470,43 @@ korrekt i stedet for hhv. "hostClaimed" og "Admin". Ingen konsol-fejl.
 lokalt før push. Ingen skema-ændring, ingen migration nødvendig.
 
 STATUS: pushet til main.
+
+==================================================
+NÆSTE OPGAVE — To sidste finpudsninger (2026-08-25, sjette
+opfølgende bestilling)
+==================================================
+
+Brugeren bekræftede: "Den blå menu del er ok nu" (ingen flere
+ændringer til menuen). To resterende punkter, ud fra endnu et
+skærmbillede af Møder-fanen:
+
+1. Møde-visnings-vælgeren (Agenda/Dag/Arbejdsuge/Måned/År) havde
+   næsten ingen visuel afgrænsning mellem knapperne — kun en
+   lysegrå baggrund (`bg-zinc-100`) uden kanter, så man knap kunne se
+   hvor én knap sluttede og den næste begyndte.
+2. "Felterne på Brugere og Rum er alt for lange" — inputfelterne i
+   "Opret bruger"/"Konfigurér rum" strakte sig fuld bredde af det
+   2-kolonne grid inde i den ~1000px brede modal, hvilket gjorde et
+   kort felt som "Brugernavn" absurd langt.
+
+RETTET:
+- Møde-vælgeren er nu et rigtigt segmenteret kontrol-element: fælles
+  kant (`border border-zinc-300`) om hele gruppen plus synlige
+  lodrette skillelinjer mellem hver knap (`divide-x`), aktiv knap er
+  nu massiv teal (`bg-[#0d6d72] text-white`) i stedet for en svag
+  hvid-med-skygge-effekt — meget tydeligere hvilken periode der er
+  valgt og hvor knapperne adskilles.
+- `formPanelClassName` fik `max-w-2xl` tilføjet — "Opret bruger"- og
+  "Konfigurér rum"-panelerne (og dermed deres felter) er nu en
+  fornuftig, begrænset bredde i stedet for at strække sig ud til
+  hele det brede indholdsområde.
+
+VERIFICERET visuelt med Playwright (seedet et par møder for at se
+vælgeren i både Agenda- og Måned-tilstand med rigtige data) — kanter/
+skillelinjer tydeligt synlige, felterne markant smallere og mere
+proportionerede. Ingen konsol-fejl.
+
+`npm run typecheck`/eslint (målrettet)/`test:ci`/`remix build` grønne
+lokalt før push. Ingen skema-ændring, ingen migration nødvendig.
+
+STATUS: pushet til main.

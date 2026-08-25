@@ -145,7 +145,7 @@ const rowButtonClassName =
 	'rounded-md border px-3 py-1.5 text-xs font-medium normal-case tracking-normal'
 
 const formPanelClassName =
-	'grid gap-x-6 gap-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50 sm:grid-cols-2'
+	'grid max-w-2xl gap-x-6 gap-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50 sm:grid-cols-2'
 const formSubmitButtonClassName =
 	'w-full border-2 normal-case tracking-normal sm:w-auto'
 
@@ -491,17 +491,17 @@ function MeetingsSection({
 					title="Møder"
 					subtitle="Historik over møder, grupperet efter starttidspunkt."
 				/>
-				<div className="flex gap-1 rounded-md bg-zinc-100 p-1 dark:bg-zinc-800">
+				<div className="inline-flex divide-x divide-zinc-300 overflow-hidden rounded-md border border-zinc-300 dark:divide-zinc-600 dark:border-zinc-600">
 					{MEETING_VIEW_MODES.map((mode) => (
 						<button
 							key={mode.id}
 							type="button"
 							onClick={() => setViewMode(mode.id)}
 							className={cn(
-								'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+								'px-3 py-1.5 text-xs font-medium transition-colors',
 								mode.id === viewMode
-									? 'bg-white text-[#0b565b] shadow-sm dark:bg-zinc-700 dark:text-white'
-									: 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100'
+									? 'bg-[#0d6d72] text-white'
+									: 'bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800'
 							)}
 						>
 							{mode.label}

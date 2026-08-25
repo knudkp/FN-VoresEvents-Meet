@@ -421,3 +421,16 @@ typecheck-fejl kan ligge skjult sådan.
     og `lockRoom`-hændelse tilskrevet en navngiven admin for at
     bekræfte System log-rettelserne. `npm run check`/`remix build`
     grønne lokalt før push. Ingen skema-ændring, ingen migration.
+- **2026-08-25**: To sidste finpudsninger af admin-panelet — se
+  [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s sjette
+  "NÆSTE OPGAVE"-afsnit. Møde-visnings-vælgeren (Agenda/Dag/
+  Arbejdsuge/Måned/År) manglede al visuel afgrænsning mellem
+  knapperne (kun en lysegrå baggrund uden kanter) — omdannet til et
+  rigtigt segmenteret kontrol-element med fælles kant, synlige
+  `divide-x`-skillelinjer, og en massiv teal aktiv-tilstand.
+  `formPanelClassName` fik `max-w-2xl` — "Opret bruger"/"Konfigurér
+  rum"s inputfelter strakte sig fuld bredde af det brede 2-kolonne
+  grid (absurd langt felt til fx et brugernavn), nu en fornuftig
+  begrænset bredde. Verificeret visuelt med Playwright på seedet
+  mødedata i både Agenda- og Måned-visning. `npm run check`/
+  `remix build` grønne lokalt før push. Ingen skema-ændring.
