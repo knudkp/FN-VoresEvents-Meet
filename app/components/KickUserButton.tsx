@@ -22,7 +22,10 @@ export const KickUserButton: FC<KickUserButtonProps> = ({ user }) => {
 		<AlertDialog.Root>
 			<Tooltip content={`Fjern ${data?.displayName}`}>
 				<AlertDialog.Trigger asChild>
-					<Button displayType="secondary">
+					<Button
+						displayType="secondary"
+						aria-label={`Fjern ${data?.displayName}`}
+					>
 						<Icon type="userMinus" />
 					</Button>
 				</AlertDialog.Trigger>

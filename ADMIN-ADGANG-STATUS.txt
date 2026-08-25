@@ -576,3 +576,83 @@ node-direkte workaround) før push. Ingen skema-ændring, ingen
 migration nødvendig.
 
 STATUS: pushet til main.
+
+==================================================
+NÆSTE OPGAVE — ALT-tekst og tooltips hele systemet
+igennem (2026-08-25, ottende opfølgende bestilling)
+==================================================
+
+Brugeren bad om:
+1. En "Log ud"-knap ved siden af "Admin"-linket på "Klar til møde".
+2. ALT-tekst (aria-label) og tooltip på "Skift"/"Slet" ("Du er logget
+   ind som:"-rækken) — de er kryptiske navne for hvad de rent
+   faktisk gør.
+3. Relevante ALT-tekster og tooltips PÅ ALLE KNAPPER i hele systemet.
+   Tooltip skal være venstrestillet, sort baggrund, 12px hvid skrift.
+
+IMPLEMENTERET:
+- **Ny "Log ud"-knap**: tilføjet direkte ved siden af Admin-linket i
+  bunden af [_index.tsx](app/routes/_index.tsx)'s dashboard (poster
+  til `/logout`, samme mekanisme som den eksisterende "Slet"-knap
+  øverst).
+- **Skift/Slet fik `aria-label` + tooltip**: "Skift" → "Skift dit
+  visningsnavn", "Slet" → "Log ud" (den knap gør reelt bare logout,
+  trods det misvisende navn "Slet" — IKKE omdøbt efter brugerens
+  ønske, kun forklaret via tooltip/alt-tekst som bedt om).
+- **Tooltip-komponenten** ([Tooltip.tsx](app/components/Tooltip.tsx))
+  omstylet globalt: sort baggrund, hvid `text-xs` (12px), venstrestillet
+  tekst (`text-left` + Radix `align="start"`) — denne ene ændring
+  slog automatisk igennem alle ~15 steder i appen der allerede brugte
+  komponenten (kamera/mikrofon/chat/skærmdeling/forlad/ræk hånd op/
+  mute/fjern-knapper i selve mødet), uden at skulle røre dem enkeltvis.
+- **Tooltip/aria-label tilføjet hele vejen igennem** til steder der
+  manglede det helt: skærmdelings-knappen, "flere indstillinger"-
+  menuen, chat-luk-knappen, kopiér-møde-id (debug), den delte
+  `DialogClose` (×)-knap der bruges af ALLE dialoger i appen, samt
+  hele admin-panelet (nav-knapper, Rediger/Slet/Send igen/Gem/Annullér,
+  Opret bruger/Gem rum-knapperne, Ophæv-knapperne i Bannede-fanen,
+  møde-visnings-vælgeren, periode-navigation, "Styr live"/Slet i
+  møde-listerne, dag-celler i månedsgitteret) og "Styr live"-sidens
+  Lås/Chat/Mute/Fjern/Ban-knapper (erstattede native HTML `title`-
+  attributter med den rigtige sorte tooltip-komponent der).
+- Eksisterende ENGELSKE tooltip-tekster oversat til dansk undervejs
+  for konsistens (kamera/mikrofon/chat/forbindelse/forlad/ræk hånd op/
+  mute-dialogens tekster, "flere indstillinger"-menupunkterne,
+  deltager-antal-teksten m.fl.).
+
+**REEL BUG FUNDET OG RETTET undervejs (ikke kun kosmetik)**: at
+lægge `<Tooltip>` INDENI en Radix `asChild`-forbrugende Trigger
+(Dialog/DropdownMenu/AlertDialog/Toast) ødelagde selve trigger-
+mekanismen — `Tooltip` er ikke `forwardRef` og videresender ikke
+ekstra props til sine børn, så Radix' Slot-kloning af onClick/ref
+gennem `Trigger asChild → Tooltip → button` gik tabt undervejs.
+Konkret betød det at "Admin"-knappen, "Hjælp" (?)-knappen, "flere
+indstillinger"-menuen (⋯ i selve mødet), og Annullér/Mute-knapperne i
+mute-bekræftelses-dialogen reelt IKKE LÆNGERE VIRKEDE (klik gjorde
+ingenting) — opdaget ved at ens egen Playwright-test af tooltip'en
+konsekvent ikke kunne åbne admin-modalen. Rettet ved konsekvent at
+lægge `<Tooltip>` UDENFOR den asChild-forbrugende Trigger i stedet
+(`<Tooltip><Trigger asChild><button/></Trigger></Tooltip>`), som er
+det mønster koden allerede brugte korrekt andre steder (fx
+`ParticipantsMenu.tsx`, `SettingsDialog.tsx`) — kopieret derfra.
+Bekræftet rettet ved at teste admin-modalen faktisk åbner igen med
+Playwright (`dialog count after: 1`).
+
+**OneDrive-sync-artefakt** (denne mappe synces via "Onlime Sync"):
+midt i denne session forsvandt `capitalizeFirst`-rettelsen fra forrige
+runde stille og roligt fra [AdminPanel.tsx](app/components/AdminPanel.tsx)
+(en "conflicted copy"-fil dukkede op igen, samme mønster som tidligere
+i denne session) — opdaget ved et `git diff` mod sidste commit og
+rettet tilbage. Alt andet i filen var uberørt.
+
+VERIFICERET: `dialog count after: 1` (admin-modalen åbner igen),
+tooltip'en bekræftet i DOM'en med rigtigt indhold og set visuelt med
+sort baggrund/hvid 12px-tekst/venstrestillet via et rigtigt
+museflyt-hover i en Playwright-browser. Ingen konsol-fejl.
+
+`tsc`/eslint (målrettet alle 27 ændrede filer)/vitest/`remix build`
+grønne lokalt før push (samme node-direkte workaround som ovenfor,
+`npm` selv er stadig i stykker i denne session). Ingen skema-ændring,
+ingen migration.
+
+STATUS: pushet til main.

@@ -62,7 +62,7 @@ const OtherUser: FC<{ user: User }> = ({ user }) => {
 }
 
 export const participantCount = (count: number) =>
-	`${count} Participant${count > 1 ? 's' : ''}`
+	`${count} deltager${count > 1 ? 'e' : ''}`
 
 interface ParticipantDialogProps {
 	children?: ReactNode
@@ -84,7 +84,11 @@ export const ParticipantsButton: FC<
 		<ParticipantsDialog {...rest}>
 			<Tooltip content={participantCount(otherUsers.length + 1)}>
 				<Trigger asChild>
-					<Button className={cn('relative', className)} displayType="secondary">
+					<Button
+						className={cn('relative', className)}
+						displayType="secondary"
+						aria-label={participantCount(otherUsers.length + 1)}
+					>
 						<Icon type="userGroup" />
 					</Button>
 				</Trigger>

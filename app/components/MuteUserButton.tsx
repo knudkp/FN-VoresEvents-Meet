@@ -28,11 +28,11 @@ export const MuteUserButton: FC<MuteUserButtonProps> = ({
 
 	if (user.tracks.audioUnavailable) {
 		return (
-			<Tooltip content="Mic is unavailable. User cannot unmute.">
-				<Button disabled displayType="secondary">
+			<Tooltip content="Mikrofon utilgængelig — kan ikke slås til">
+				<Button disabled displayType="secondary" aria-label="Mikrofon utilgængelig">
 					<Icon type="micOff" className="text-red-700 dark:text-red-400" />
 					<VisuallyHidden>
-						User's mic is unavailable, cannot unmute.
+						Brugerens mikrofon er utilgængelig og kan ikke slås til.
 					</VisuallyHidden>
 				</Button>
 			</Tooltip>
@@ -47,14 +47,19 @@ export const MuteUserButton: FC<MuteUserButtonProps> = ({
 						<Button
 							displayType={displayType}
 							disabled={!user.tracks.audioEnabled}
+							aria-label={`Mute ${data?.displayName}`}
 						>
 							<Icon type="micOn" />
 						</Button>
 					</AlertDialog.Trigger>
 				</Tooltip>
 			) : (
-				<Tooltip content="Cannot unmute">
-					<Button displayType={mutedDisplayType} disabled>
+				<Tooltip content="Kan ikke slås til igen af dig">
+					<Button
+						displayType={mutedDisplayType}
+						disabled
+						aria-label="Kan ikke slås til igen af dig"
+					>
 						<Icon type="micOff" />
 					</Button>
 				</Tooltip>
@@ -69,30 +74,39 @@ export const MuteUserButton: FC<MuteUserButtonProps> = ({
 				>
 					<AlertDialog.Title>Mute {data?.displayName}</AlertDialog.Title>
 					<AlertDialog.Description>
-						They will need to unmute themselves to be heard again.
+						Personen skal selv slå mikrofonen til igen for at kunne høres.
 					</AlertDialog.Description>
 					<AlertDialog.Actions>
-						<AlertDialog.Cancel asChild>
-							<Button className="text-sm" displayType="secondary">
-								Cancel
-							</Button>
-						</AlertDialog.Cancel>
-						<AlertDialog.Action asChild>
-							<Button
-								onClick={() => {
-									room.websocket.send(
-										JSON.stringify({
-											type: 'muteUser',
-											id: user.id,
-										} satisfies ClientMessage)
-									)
-								}}
-								className="text-sm"
-								displayType="danger"
-							>
-								Mute
-							</Button>
-						</AlertDialog.Action>
+						<Tooltip content="Annullér">
+							<AlertDialog.Cancel asChild>
+								<Button
+									className="text-sm"
+									displayType="secondary"
+									aria-label="Annullér"
+								>
+									Annullér
+								</Button>
+							</AlertDialog.Cancel>
+						</Tooltip>
+						<Tooltip content={`Mute ${data?.displayName}`}>
+							<AlertDialog.Action asChild>
+								<Button
+									onClick={() => {
+										room.websocket.send(
+											JSON.stringify({
+												type: 'muteUser',
+												id: user.id,
+											} satisfies ClientMessage)
+										)
+									}}
+									className="text-sm"
+									displayType="danger"
+									aria-label={`Mute ${data?.displayName}`}
+								>
+									Mute
+								</Button>
+							</AlertDialog.Action>
+						</Tooltip>
 					</AlertDialog.Actions>
 				</AlertDialog.Content>
 			</AlertDialog.Portal>

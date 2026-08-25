@@ -37,12 +37,11 @@ export const CameraButton: FC<ButtonProps> = ({ onClick, ...rest }) => {
 		? errorMessageMap[videoUnavailableReason]
 		: null
 
+	const label = videoEnabled ? 'Sluk kamera' : 'Tænd kamera'
+
 	return (
 		<Tooltip
-			content={
-				videoUnavailableMessage ??
-				`Turn camera ${videoEnabled ? 'off' : 'on'} (${metaKey}E)`
-			}
+			content={videoUnavailableMessage ?? `${label} (${metaKey}E)`}
 		>
 			<Button
 				displayType={videoEnabled ? 'secondary' : 'danger'}
@@ -54,11 +53,10 @@ export const CameraButton: FC<ButtonProps> = ({ onClick, ...rest }) => {
 					toggle()
 					onClick && onClick(e)
 				}}
+				aria-label={label}
 				{...rest}
 			>
-				<VisuallyHidden>
-					{videoEnabled ? 'Turn camera off' : 'Turn camera on'}
-				</VisuallyHidden>
+				<VisuallyHidden>{label}</VisuallyHidden>
 				<Icon type={videoEnabled ? 'videoOn' : 'videoOff'} />
 			</Button>
 		</Tooltip>

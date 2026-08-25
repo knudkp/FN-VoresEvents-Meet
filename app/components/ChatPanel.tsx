@@ -7,6 +7,7 @@ import type { ChatMessage, ClientMessage } from '~/types/Messages'
 import { Button } from './Button'
 import { Icon } from './Icon/Icon'
 import { Input } from './Input'
+import { Tooltip } from './Tooltip'
 
 const formatTime = (sentAt: number) =>
 	new Date(sentAt).toLocaleTimeString('da-DK', {
@@ -52,10 +53,12 @@ export const ChatPanel: FC<ChatPanelProps> = ({ onClose }) => {
 		<div className="flex w-80 flex-shrink-0 flex-col border-l border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
 			<div className="flex items-center justify-between border-b border-zinc-200 p-3 dark:border-zinc-700">
 				<h2 className="font-bold">Chat</h2>
-				<Button displayType="ghost" onClick={onClose}>
-					<VisuallyHidden>Luk chat</VisuallyHidden>
-					<Icon type="xCircle" />
-				</Button>
+				<Tooltip content="Luk chat">
+					<Button displayType="ghost" onClick={onClose} aria-label="Luk chat">
+						<VisuallyHidden>Luk chat</VisuallyHidden>
+						<Icon type="xCircle" />
+					</Button>
+				</Tooltip>
 			</div>
 			<ul ref={listRef} className="flex-1 space-y-3 overflow-y-auto p-3">
 				{chatMessages.map((message) => (
@@ -90,9 +93,11 @@ export const ChatPanel: FC<ChatPanelProps> = ({ onClose }) => {
 							placeholder="Skriv en besked…"
 							aria-label="Chatbesked"
 						/>
-						<Button type="submit" className="text-sm">
-							Send
-						</Button>
+						<Tooltip content="Send besked">
+							<Button type="submit" className="text-sm" aria-label="Send besked">
+								Send
+							</Button>
+						</Tooltip>
 					</>
 				) : (
 					<p className="text-sm text-zinc-500 dark:text-zinc-400">

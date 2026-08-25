@@ -6,6 +6,7 @@ import { cn } from '~/utils/style'
 import { AdminNav, AdminPanelSections, type AdminTabId } from './AdminPanel'
 import { Button } from './Button'
 import { Dialog, DialogClose, DialogOverlay, DialogTitle, Portal, Trigger } from './Dialog'
+import { Tooltip } from './Tooltip'
 
 export function AdminPanelDialog() {
 	const [open, setOpen] = useState(false)
@@ -29,14 +30,17 @@ export function AdminPanelDialog() {
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<Trigger asChild>
-				<button
-					type="button"
-					className="text-xs text-zinc-400 underline hover:text-zinc-600"
-				>
-					Admin
-				</button>
-			</Trigger>
+			<Tooltip content="Åbn admin-panel">
+				<Trigger asChild>
+					<button
+						type="button"
+						aria-label="Åbn admin-panel"
+						className="text-xs text-zinc-400 underline hover:text-zinc-600"
+					>
+						Admin
+					</button>
+				</Trigger>
+			</Tooltip>
 			<Portal>
 				<DialogOverlay />
 				<RadixDialog.Content
@@ -65,13 +69,16 @@ export function AdminPanelDialog() {
 							)}
 						</div>
 						<div className="flex items-center justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-700">
-							<Button
-								type="button"
-								displayType="secondary"
-								onClick={() => setOpen(false)}
-							>
-								Luk
-							</Button>
+							<Tooltip content="Luk admin-panelet">
+								<Button
+									type="button"
+									displayType="secondary"
+									onClick={() => setOpen(false)}
+									aria-label="Luk admin-panelet"
+								>
+									Luk
+								</Button>
+							</Tooltip>
 						</div>
 					</div>
 					<DialogClose />

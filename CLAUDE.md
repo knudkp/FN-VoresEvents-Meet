@@ -458,3 +458,40 @@ typecheck-fejl kan ligge skjult sådan.
   via `node ./node_modules/.../...js` i stedet resten af sessionen med
   identiske resultater, se status-filen for de præcise kommandoer hvis
   det sker igen. Verificeret visuelt med Playwright.
+- **2026-08-25**: ALT-tekst (aria-label) og tooltips tilføjet hele
+  systemet igennem, plus en ny "Log ud"-knap ved Admin-linket — se
+  [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s ottende
+  "NÆSTE OPGAVE"-afsnit for fuld detalje. Den delte
+  [Tooltip.tsx](app/components/Tooltip.tsx) omstylet globalt (sort
+  baggrund, hvid `text-xs`/12px, venstrestillet tekst) — slog automatisk
+  igennem alle ~15 eksisterende brugssteder (kamera/mikrofon/chat/
+  skærmdeling/forlad/ræk hånd op/mute/fjern i selve mødet) uden at
+  røre dem enkeltvis; tilføjet nye steder det manglede (skærmdeling,
+  "flere indstillinger", chat-luk, den delte `DialogClose`, hele
+  admin-panelet, "Styr live"-sidens knapper — erstattede native HTML
+  `title`-attributter der). Engelske tooltip-tekster oversat til dansk
+  undervejs for konsistens.
+  **Reel bug fundet og rettet, ikke kun kosmetik**: at lægge
+  `<Tooltip>` INDENI en Radix `asChild`-forbrugende Trigger
+  (Dialog/DropdownMenu/AlertDialog/Toast) ødelagde selve trigger-
+  mekanismen, fordi `Tooltip` ikke er `forwardRef` og ikke
+  videresender ekstra props — Radix' Slot-kloning af onClick/ref
+  gennem `Trigger asChild → Tooltip → button` gik tabt. Konkret betød
+  det at "Admin"-knappen, "Hjælp" (?)-knappen, "flere indstillinger"-
+  menuen, og Annullér/Mute i mute-bekræftelses-dialogen reelt IKKE
+  virkede (klik gjorde ingenting) — opdaget da ens egen Playwright-test
+  konsekvent ikke kunne åbne admin-modalen. Rettet ved konsekvent at
+  lægge `<Tooltip>` UDENFOR den asChild-forbrugende Trigger
+  (samme mønster som allerede brugt korrekt i
+  [ParticipantsMenu.tsx](app/components/ParticipantsMenu.tsx)/
+  [SettingsDialog.tsx](app/components/SettingsDialog.tsx)).
+  **OneDrive-sync-artefakt** (samme mønster som tidligere i denne
+  session): `capitalizeFirst`-rettelsen fra forrige runde forsvandt
+  stille fra AdminPanel.tsx midt i denne session — fanget ved
+  `git diff` mod sidste commit og rettet tilbage; alt andet i filen
+  var uberørt. Verificeret: admin-modalen åbner igen
+  (`dialog count after: 1`), tooltip bekræftet i DOM'en og set
+  visuelt (sort/hvid/12px/venstrestillet) via et rigtigt
+  museflyt-hover i Playwright. `tsc`/eslint/vitest/`remix build`
+  grønne lokalt (node-direkte workaround, npm stadig i stykker denne
+  session) før push. Ingen skema-ændring.

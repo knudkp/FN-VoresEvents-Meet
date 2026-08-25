@@ -23,6 +23,7 @@ import { Button } from '~/components/Button'
 import { HelpDialog } from '~/components/HelpDialog'
 import { Input } from '~/components/Input'
 import { Label } from '~/components/Label'
+import { Tooltip } from '~/components/Tooltip'
 import { useUserMetadata } from '~/hooks/useUserMetadata'
 import { ACCESS_AUTHENTICATED_USER_EMAIL_HEADER } from '~/utils/constants'
 import getUsername, {
@@ -166,20 +167,26 @@ function Dashboard({
 						</p>
 						{!usedAccess && (
 							<div className="flex items-center gap-3">
-								<a
-									className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-									href="/set-username"
-								>
-									Skift
-								</a>
-								<Form method="post" action="/logout">
-									<button
-										type="submit"
-										className="text-sm text-red-600 underline hover:text-red-800"
+								<Tooltip content="Skift dit visningsnavn">
+									<a
+										className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
+										href="/set-username"
+										aria-label="Skift visningsnavn"
 									>
-										Slet
-									</button>
-								</Form>
+										Skift
+									</a>
+								</Tooltip>
+								<Tooltip content="Log ud">
+									<Form method="post" action="/logout">
+										<button
+											type="submit"
+											className="text-sm text-red-600 underline hover:text-red-800"
+											aria-label="Log ud"
+										>
+											Slet
+										</button>
+									</Form>
+								</Tooltip>
 							</div>
 						)}
 					</div>
@@ -208,12 +215,15 @@ function Dashboard({
 									required
 									className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
 								/>
-								<Button
-									type="submit"
-									className="whitespace-nowrap border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
-								>
-									Nyt møde
-								</Button>
+								<Tooltip content="Opret og start et nyt møde">
+									<Button
+										type="submit"
+										className="whitespace-nowrap border-[#0d6d72] bg-[#0d6d72] normal-case text-white hover:border-[#0a565b] hover:bg-[#0a565b] active:border-[#083f44] active:bg-[#083f44]"
+										aria-label="Opret og start et nyt møde"
+									>
+										Nyt møde
+									</Button>
+								</Tooltip>
 							</div>
 						</Form>
 					)}
@@ -239,13 +249,16 @@ function Dashboard({
 											className="border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900"
 										/>
 									</div>
-									<Button
-										className="normal-case"
-										type="submit"
-										displayType="secondary"
-									>
-										Deltag
-									</Button>
+									<Tooltip content="Deltag i mødet">
+										<Button
+											className="normal-case"
+											type="submit"
+											displayType="secondary"
+											aria-label="Deltag i mødet"
+										>
+											Deltag
+										</Button>
+									</Tooltip>
 								</Form>
 								{actionData?.error && (
 									<p className="pt-2 text-sm text-red-500">
@@ -270,8 +283,21 @@ function Dashboard({
 						)
 					})()}
 
-					<div className="mt-8">
+					<div className="mt-8 flex items-center gap-3">
 						{isAdmin ? <AdminPanelDialog /> : <AdminLoginDialog />}
+						{!usedAccess && (
+							<Tooltip content="Log ud">
+								<Form method="post" action="/logout">
+									<button
+										type="submit"
+										className="text-xs text-zinc-400 underline hover:text-zinc-600"
+										aria-label="Log ud"
+									>
+										Log ud
+									</button>
+								</Form>
+							</Tooltip>
+						)}
 					</div>
 				</div>
 			</div>

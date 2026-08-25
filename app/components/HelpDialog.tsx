@@ -6,19 +6,22 @@ import {
 	Portal,
 	Trigger,
 } from './Dialog'
+import { Tooltip } from './Tooltip'
 
 export function HelpDialog() {
 	return (
 		<Dialog>
-			<Trigger asChild>
-				<button
-					type="button"
-					aria-label="Hjælp"
-					className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#0d6d72] bg-white text-base font-bold text-[#0d6d72] shadow-md hover:bg-[#0d6d72] hover:text-white"
-				>
-					?
-				</button>
-			</Trigger>
+			<Tooltip content="Hjælp">
+				<Trigger asChild>
+					<button
+						type="button"
+						aria-label="Hjælp"
+						className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#0d6d72] bg-white text-base font-bold text-[#0d6d72] shadow-md hover:bg-[#0d6d72] hover:text-white"
+					>
+						?
+					</button>
+				</Trigger>
+			</Tooltip>
 			<Portal>
 				<DialogOverlay />
 				<DialogContent>

@@ -44,14 +44,11 @@ export const MicButton: FC<
 		? errorMessageMap[audioUnavailableReason]
 		: null
 
+	const label = audioEnabled ? 'Sluk mikrofon' : 'Tænd mikrofon'
+
 	return (
 		<>
-			<Tooltip
-				content={
-					audioUnavailableMessage ??
-					`Turn mic ${audioEnabled ? 'off' : 'on'} (${metaKey}D)`
-				}
-			>
+			<Tooltip content={audioUnavailableMessage ?? `${label} (${metaKey}D)`}>
 				<Button
 					displayType={audioEnabled ? 'secondary' : 'danger'}
 					disabled={!!audioUnavailableMessage}
@@ -59,11 +56,10 @@ export const MicButton: FC<
 						toggle()
 						onClick && onClick(e)
 					}}
+					aria-label={label}
 					{...rest}
 				>
-					<VisuallyHidden>
-						{audioEnabled ? 'Turn mic off' : 'Turn mic on'}
-					</VisuallyHidden>
+					<VisuallyHidden>{label}</VisuallyHidden>
 					<Icon type={audioEnabled ? 'micOn' : 'micOff'} />
 				</Button>
 			</Tooltip>
@@ -73,17 +69,25 @@ export const MicButton: FC<
 					open
 					type="foreground"
 				>
-					<Toast.Title className="ToastTitle">Talking while muted?</Toast.Title>
-					<Toast.Action
-						className="ToastAction"
-						asChild
-						altText="Unmute to talk"
-					>
-						<Button displayType="danger" onClick={toggle}>
-							<VisuallyHidden>Turn mic on</VisuallyHidden>
-							<Icon type="micOff" />
-						</Button>
-					</Toast.Action>
+					<Toast.Title className="ToastTitle">
+						Taler du, mens du er muted?
+					</Toast.Title>
+					<Tooltip content="Tænd mikrofon">
+						<Toast.Action
+							className="ToastAction"
+							asChild
+							altText="Slå mikrofonen til for at tale"
+						>
+							<Button
+								displayType="danger"
+								onClick={toggle}
+								aria-label="Tænd mikrofon"
+							>
+								<VisuallyHidden>Tænd mikrofon</VisuallyHidden>
+								<Icon type="micOff" />
+							</Button>
+						</Toast.Action>
+					</Tooltip>
 				</Toast.Root>
 			)}
 		</>

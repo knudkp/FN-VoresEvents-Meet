@@ -235,26 +235,31 @@ function JoinedRoom({ bugReportsEnabled }: { bugReportsEnabled: boolean }) {
 						meetingId={meetingId}
 					/>
 					{showDebugInfo && meetingId && (
-						<CopyButton contentValue={meetingId}>Meeting Id</CopyButton>
+						<Tooltip content="Kopiér møde-id">
+							<CopyButton contentValue={meetingId}>Meeting Id</CopyButton>
+						</Tooltip>
 					)}
 					{showDebugInfo && meetingId && dashboardDebugLogsBaseUrl && (
-						<ButtonLink
-							className="text-xs"
-							displayType="secondary"
-							to={dashboardLogsLink(dashboardDebugLogsBaseUrl, [
-								{
-									id: '2',
-									key: 'meetingId',
-									type: 'string',
-									value: meetingId,
-									operation: 'eq',
-								},
-							])}
-							target="_blank"
-							rel="noreferrer"
-						>
-							Meeting Logs
-						</ButtonLink>
+						<Tooltip content="Åbn logs for dette møde i nyt vindue">
+							<ButtonLink
+								className="text-xs"
+								displayType="secondary"
+								to={dashboardLogsLink(dashboardDebugLogsBaseUrl, [
+									{
+										id: '2',
+										key: 'meetingId',
+										type: 'string',
+										value: meetingId,
+										operation: 'eq',
+									},
+								])}
+								target="_blank"
+								rel="noreferrer"
+								aria-label="Åbn logs for dette møde i nyt vindue"
+							>
+								Meeting Logs
+							</ButtonLink>
+						</Tooltip>
 					)}
 				</div>
 			</div>

@@ -35,6 +35,7 @@ export const ChatButton: FC<ChatButtonProps> = ({
 				className="relative"
 				displayType={chatOpen ? 'primary' : 'secondary'}
 				onClick={onClick}
+				aria-label="Chat"
 			>
 				<VisuallyHidden>Chat</VisuallyHidden>
 				<Icon type="chatBubble" />

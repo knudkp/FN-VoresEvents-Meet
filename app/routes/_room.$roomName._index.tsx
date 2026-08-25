@@ -92,10 +92,10 @@ export default function Lobby() {
 									{audioEnabled ? (
 										<AudioIndicator audioTrack={audioStreamTrack} />
 									) : (
-										<Tooltip content="Mic is turned off">
+										<Tooltip content="Mikrofon er slukket">
 											<div className="text-white indication-shadow">
 												<Icon type="micOff" />
-												<VisuallyHidden>Mic is turned off</VisuallyHidden>
+												<VisuallyHidden>Mikrofon er slukket</VisuallyHidden>
 											</div>
 										</Tooltip>
 									)}
@@ -149,30 +149,39 @@ export default function Lobby() {
 					</div>
 				)}
 				<div className="flex gap-4 text-sm">
-					<Button
-						onClick={() => {
-							setJoined(true)
-							// we navigate here with javascript instead of an a
-							// tag because we don't want it to be possible to join
-							// the room without the JS having loaded
-							navigate(
-								'room' + (params.size > 0 ? '?' + params.toString() : '')
-							)
-						}}
-						disabled={!session?.sessionId}
-					>
-						Deltag
-					</Button>
+					<Tooltip content="Deltag i mødet">
+						<Button
+							onClick={() => {
+								setJoined(true)
+								// we navigate here with javascript instead of an a
+								// tag because we don't want it to be possible to join
+								// the room without the JS having loaded
+								navigate(
+									'room' + (params.size > 0 ? '?' + params.toString() : '')
+								)
+							}}
+							disabled={!session?.sessionId}
+							aria-label="Deltag i mødet"
+						>
+							Deltag
+						</Button>
+					</Tooltip>
 					<MicButton />
 					<CameraButton />
 					<SettingsButton />
-					<Tooltip content="Copy URL">
+					<Tooltip content="Kopiér mødelink">
 						<CopyButton contentValue={roomUrl}></CopyButton>
 					</Tooltip>
 					<Form method="post" action="/logout" className="ml-auto">
-						<Button type="submit" displayType="secondary">
-							Forlad {roomName}
-						</Button>
+						<Tooltip content={`Forlad ${roomName}`}>
+							<Button
+								type="submit"
+								displayType="secondary"
+								aria-label={`Forlad ${roomName}`}
+							>
+								Forlad {roomName}
+							</Button>
+						</Tooltip>
 					</Form>
 				</div>
 			</div>

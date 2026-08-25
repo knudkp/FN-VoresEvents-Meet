@@ -5,6 +5,7 @@ import { Button } from './Button'
 import { Checkbox } from './Checkbox'
 import { Input } from './Input'
 import { Label } from './Label'
+import { Tooltip } from './Tooltip'
 import { cn } from '~/utils/style'
 
 // Bare ElementType (no prop generic): Remix's `Form` and a fetcher's `.Form`
@@ -195,19 +196,21 @@ export function AdminNav({
 					</p>
 					<div className="space-y-0.5">
 						{group.items.map((item) => (
-							<button
-								key={item.id}
-								type="button"
-								onClick={() => onTabChange(item.id)}
-								className={cn(
-									'block w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-									item.id === activeTab
-										? 'bg-[#0d6d72] font-medium text-white shadow-sm'
-										: 'text-blue-100/90 hover:bg-white/10 hover:text-white'
-								)}
-							>
-								{item.label}
-							</button>
+							<Tooltip key={item.id} content={`Gå til ${item.label}`}>
+								<button
+									type="button"
+									onClick={() => onTabChange(item.id)}
+									aria-label={`Gå til ${item.label}`}
+									className={cn(
+										'block w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+										item.id === activeTab
+											? 'bg-[#0d6d72] font-medium text-white shadow-sm'
+											: 'text-blue-100/90 hover:bg-white/10 hover:text-white'
+									)}
+								>
+									{item.label}
+								</button>
+							</Tooltip>
 						))}
 					</div>
 				</div>
@@ -270,17 +273,26 @@ function UserTableRow({
 							</select>
 						</div>
 						<div className="flex gap-2 sm:col-span-2">
-							<Button type="submit" className={rowButtonClassName}>
-								Gem
-							</Button>
-							<Button
-								type="button"
-								displayType="secondary"
-								className={rowButtonClassName}
-								onClick={() => setIsEditing(false)}
-							>
-								Annullér
-							</Button>
+							<Tooltip content="Gem ændringer">
+								<Button
+									type="submit"
+									className={rowButtonClassName}
+									aria-label="Gem ændringer"
+								>
+									Gem
+								</Button>
+							</Tooltip>
+							<Tooltip content="Annullér redigering">
+								<Button
+									type="button"
+									displayType="secondary"
+									className={rowButtonClassName}
+									onClick={() => setIsEditing(false)}
+									aria-label="Annullér redigering"
+								>
+									Annullér
+								</Button>
+							</Tooltip>
 						</div>
 					</Form>
 				</td>
@@ -320,37 +332,46 @@ function UserTableRow({
 			</td>
 			<td className={cn(tdClassName, 'text-right')}>
 				<div className="flex justify-end gap-2">
-					<Button
-						type="button"
-						displayType="secondary"
-						className={rowButtonClassName}
-						onClick={() => setIsEditing(true)}
-					>
-						Rediger
-					</Button>
+					<Tooltip content={`Rediger ${user.username}`}>
+						<Button
+							type="button"
+							displayType="secondary"
+							className={rowButtonClassName}
+							onClick={() => setIsEditing(true)}
+							aria-label={`Rediger ${user.username}`}
+						>
+							Rediger
+						</Button>
+					</Tooltip>
 					{!user.passwordHash && (
 						<Form method="post" action="/admin">
 							<input type="hidden" name="intent" value="resendInvite" />
 							<input type="hidden" name="username" value={user.username} />
-							<Button
-								type="submit"
-								displayType="secondary"
-								className={rowButtonClassName}
-							>
-								Send igen
-							</Button>
+							<Tooltip content="Send invitationen igen">
+								<Button
+									type="submit"
+									displayType="secondary"
+									className={rowButtonClassName}
+									aria-label="Send invitationen igen"
+								>
+									Send igen
+								</Button>
+							</Tooltip>
 						</Form>
 					)}
 					<Form method="post" action="/admin">
 						<input type="hidden" name="intent" value="deleteUser" />
 						<input type="hidden" name="username" value={user.username} />
-						<Button
-							type="submit"
-							displayType="danger"
-							className={rowButtonClassName}
-						>
-							Slet
-						</Button>
+						<Tooltip content={`Slet ${user.username} permanent`}>
+							<Button
+								type="submit"
+								displayType="danger"
+								className={rowButtonClassName}
+								aria-label={`Slet ${user.username}`}
+							>
+								Slet
+							</Button>
+						</Tooltip>
 					</Form>
 				</div>
 			</td>
@@ -518,22 +539,28 @@ function MeetingCompactRow({
 				<span>{formatLogDate(meeting.created)}</span>
 				<div className="flex shrink-0 items-center gap-2">
 					{!meeting.ended && meeting.roomName && (
-						<Link
-							to={`/admin/rooms/${meeting.roomName}`}
-							className="text-[#0d6d72] underline hover:text-[#0a565b]"
-						>
-							Styr live
-						</Link>
+						<Tooltip content="Åbn live-styring for dette møde">
+							<Link
+								to={`/admin/rooms/${meeting.roomName}`}
+								className="text-[#0d6d72] underline hover:text-[#0a565b]"
+								aria-label="Styr live"
+							>
+								Styr live
+							</Link>
+						</Tooltip>
 					)}
 					<Form method="post" action="/admin" className="inline">
 						<input type="hidden" name="intent" value="deleteMeeting" />
 						<input type="hidden" name="meetingId" value={meeting.id} />
-						<button
-							type="submit"
-							className="text-red-600 underline hover:text-red-800 dark:text-red-400"
-						>
-							Slet
-						</button>
+						<Tooltip content="Slet dette møde">
+							<button
+								type="submit"
+								className="text-red-600 underline hover:text-red-800 dark:text-red-400"
+								aria-label="Slet dette møde"
+							>
+								Slet
+							</button>
+						</Tooltip>
 					</Form>
 				</div>
 			</div>
@@ -569,6 +596,7 @@ function MonthGrid({
 						key={day.toISOString()}
 						type="button"
 						onClick={() => onSelectDay(day)}
+						aria-label={`Vis møder for ${day.toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' })}`}
 						className={cn(
 							'flex min-h-[5.5rem] flex-col items-stretch gap-1 bg-white p-1.5 text-left transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/60',
 							!inMonth && 'bg-zinc-50 dark:bg-zinc-900/40'
@@ -628,20 +656,27 @@ function YearGrid({
 						created.getFullYear() === year && created.getMonth() === monthIndex
 					)
 				}).length
+				const monthLabel = monthDate.toLocaleDateString('da-DK', {
+					month: 'long',
+				})
 				return (
-					<button
-						key={monthIndex}
-						type="button"
-						onClick={() => onSelectMonth(monthDate)}
-						className="flex flex-col items-start gap-1 bg-white p-3 text-left transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/60"
-					>
-						<span className="text-sm font-semibold capitalize text-zinc-900 dark:text-zinc-50">
-							{monthDate.toLocaleDateString('da-DK', { month: 'long' })}
-						</span>
-						<span className="text-xs text-zinc-500 dark:text-zinc-400">
-							{count === 0 ? 'Ingen møder' : `${count} møde${count === 1 ? '' : 'r'}`}
-						</span>
-					</button>
+					<Tooltip key={monthIndex} content={`Vis møder for ${monthLabel}`}>
+						<button
+							type="button"
+							onClick={() => onSelectMonth(monthDate)}
+							aria-label={`Vis møder for ${monthLabel}`}
+							className="flex flex-col items-start gap-1 bg-white p-3 text-left transition-colors hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/60"
+						>
+							<span className="text-sm font-semibold capitalize text-zinc-900 dark:text-zinc-50">
+								{monthLabel}
+							</span>
+							<span className="text-xs text-zinc-500 dark:text-zinc-400">
+								{count === 0
+									? 'Ingen møder'
+									: `${count} møde${count === 1 ? '' : 'r'}`}
+							</span>
+						</button>
+					</Tooltip>
 				)
 			})}
 		</div>
@@ -744,48 +779,54 @@ function MeetingsSection({
 				/>
 				<div className="inline-flex divide-x divide-zinc-300 overflow-hidden rounded-md border border-zinc-300 dark:divide-zinc-600 dark:border-zinc-600">
 					{MEETING_VIEW_MODES.map((mode) => (
-						<button
-							key={mode.id}
-							type="button"
-							onClick={() => setViewMode(mode.id)}
-							className={cn(
-								'px-3 py-1.5 text-xs font-medium transition-colors',
-								mode.id === viewMode
-									? 'bg-[#0d6d72] text-white'
-									: 'bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800'
-							)}
-						>
-							{mode.label}
-						</button>
+						<Tooltip key={mode.id} content={`Vis som ${mode.label.toLowerCase()}`}>
+							<button
+								type="button"
+								onClick={() => setViewMode(mode.id)}
+								aria-label={`Vis som ${mode.label.toLowerCase()}`}
+								className={cn(
+									'px-3 py-1.5 text-xs font-medium transition-colors',
+									mode.id === viewMode
+										? 'bg-[#0d6d72] text-white'
+										: 'bg-white text-zinc-600 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800'
+								)}
+							>
+								{mode.label}
+							</button>
+						</Tooltip>
 					))}
 				</div>
 			</div>
 
 			{viewMode !== 'agenda' && (
 				<div className="flex items-center justify-center gap-4">
-					<button
-						type="button"
-						onClick={() =>
-							setRefDate((d) => shiftMeetingRefDate(viewMode, d, -1))
-						}
-						className="rounded-full px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-						aria-label="Forrige periode"
-					>
-						‹
-					</button>
+					<Tooltip content="Forrige periode">
+						<button
+							type="button"
+							onClick={() =>
+								setRefDate((d) => shiftMeetingRefDate(viewMode, d, -1))
+							}
+							className="rounded-full px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+							aria-label="Forrige periode"
+						>
+							‹
+						</button>
+					</Tooltip>
 					<p className="min-w-[14rem] text-center text-sm font-medium">
 						{capitalizeFirst(meetingPeriodLabel(viewMode, refDate))}
 					</p>
-					<button
-						type="button"
-						onClick={() =>
-							setRefDate((d) => shiftMeetingRefDate(viewMode, d, 1))
-						}
-						className="rounded-full px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-						aria-label="Næste periode"
-					>
-						›
-					</button>
+					<Tooltip content="Næste periode">
+						<button
+							type="button"
+							onClick={() =>
+								setRefDate((d) => shiftMeetingRefDate(viewMode, d, 1))
+							}
+							className="rounded-full px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+							aria-label="Næste periode"
+						>
+							›
+						</button>
+					</Tooltip>
 				</div>
 			)}
 
@@ -861,12 +902,15 @@ function MeetingsSection({
 										<td className={cn(tdClassName, 'text-right')}>
 											<div className="flex justify-end items-center gap-3">
 												{!meeting.ended && meeting.roomName && (
-													<Link
-														to={`/admin/rooms/${meeting.roomName}`}
-														className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-													>
-														Styr live
-													</Link>
+													<Tooltip content="Åbn live-styring for dette møde">
+														<Link
+															to={`/admin/rooms/${meeting.roomName}`}
+															className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
+															aria-label="Styr live"
+														>
+															Styr live
+														</Link>
+													</Tooltip>
 												)}
 												<Form method="post" action="/admin">
 													<input
@@ -879,13 +923,16 @@ function MeetingsSection({
 														name="meetingId"
 														value={meeting.id}
 													/>
-													<Button
-														type="submit"
-														displayType="danger"
-														className={rowButtonClassName}
-													>
-														Slet
-													</Button>
+													<Tooltip content="Slet dette møde">
+														<Button
+															type="submit"
+															displayType="danger"
+															className={rowButtonClassName}
+															aria-label="Slet dette møde"
+														>
+															Slet
+														</Button>
+													</Tooltip>
 												</Form>
 											</div>
 										</td>
@@ -941,13 +988,16 @@ function BannedSection({
 											<Form method="post" action="/admin" className="inline">
 												<input type="hidden" name="intent" value="unbanIp" />
 												<input type="hidden" name="ip" value={ban.ip} />
-												<Button
-													type="submit"
-													displayType="secondary"
-													className={rowButtonClassName}
-												>
-													Ophæv
-												</Button>
+												<Tooltip content={`Ophæv ban for ${ban.ip}`}>
+													<Button
+														type="submit"
+														displayType="secondary"
+														className={rowButtonClassName}
+														aria-label={`Ophæv ban for ${ban.ip}`}
+													>
+														Ophæv
+													</Button>
+												</Tooltip>
 											</Form>
 										</td>
 									</tr>
@@ -998,13 +1048,16 @@ function BannedSection({
 													name="username"
 													value={ban.username}
 												/>
-												<Button
-													type="submit"
-													displayType="secondary"
-													className={rowButtonClassName}
-												>
-													Ophæv
-												</Button>
+												<Tooltip content={`Ophæv ban for ${ban.username}`}>
+													<Button
+														type="submit"
+														displayType="secondary"
+														className={rowButtonClassName}
+														aria-label={`Ophæv ban for ${ban.username}`}
+													>
+														Ophæv
+													</Button>
+												</Tooltip>
 											</Form>
 										</td>
 									</tr>
@@ -1090,9 +1143,15 @@ export function AdminPanelSections({
 								</select>
 							</div>
 							<div className="sm:col-span-2">
-								<Button type="submit" className={formSubmitButtonClassName}>
-									Opret og send invitation
-								</Button>
+								<Tooltip content="Opret brugeren og send en invitation på e-mail">
+									<Button
+										type="submit"
+										className={formSubmitButtonClassName}
+										aria-label="Opret og send invitation"
+									>
+										Opret og send invitation
+									</Button>
+								</Tooltip>
 							</div>
 						</Form>
 					</section>
@@ -1169,9 +1228,15 @@ export function AdminPanelSections({
 								<Input id="password" name="password" type="password" />
 							</div>
 							<div className="sm:col-span-2">
-								<Button type="submit" className={formSubmitButtonClassName}>
-									Gem rum
-								</Button>
+								<Tooltip content="Gem rummets indstillinger">
+									<Button
+										type="submit"
+										className={formSubmitButtonClassName}
+										aria-label="Gem rum"
+									>
+										Gem rum
+									</Button>
+								</Tooltip>
 							</div>
 						</Form>
 					</section>
@@ -1227,13 +1292,16 @@ export function AdminPanelSections({
 															name="roomId"
 															value={room.id}
 														/>
-														<Button
-															type="submit"
-															displayType="danger"
-															className={rowButtonClassName}
-														>
-															Slet
-														</Button>
+														<Tooltip content={`Slet rummet ${room.id}`}>
+															<Button
+																type="submit"
+																displayType="danger"
+																className={rowButtonClassName}
+																aria-label={`Slet rummet ${room.id}`}
+															>
+																Slet
+															</Button>
+														</Tooltip>
 													</Form>
 												</td>
 											</tr>

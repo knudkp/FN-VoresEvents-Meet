@@ -7,6 +7,7 @@ import { Form, useLoaderData } from '@remix-run/react'
 import invariant from 'tiny-invariant'
 import { requireAdmin } from '~/adminSession.server'
 import { Button } from '~/components/Button'
+import { Tooltip } from '~/components/Tooltip'
 import type { Env } from '~/types/Env'
 import type { User } from '~/types/Messages'
 import getUsername from '~/utils/getUsername.server'
@@ -119,9 +120,21 @@ export default function AdminRoomControl() {
 						name="intent"
 						value={state.roomLocked ? 'unlock' : 'lock'}
 					/>
-					<Button type="submit" displayType="secondary">
-						{state.roomLocked ? 'Lås op' : 'Lås mødet'}
-					</Button>
+					<Tooltip
+						content={
+							state.roomLocked
+								? 'Lås mødet op, så nye kan joine'
+								: 'Lås mødet, så ingen nye kan joine'
+						}
+					>
+						<Button
+							type="submit"
+							displayType="secondary"
+							aria-label={state.roomLocked ? 'Lås op' : 'Lås mødet'}
+						>
+							{state.roomLocked ? 'Lås op' : 'Lås mødet'}
+						</Button>
+					</Tooltip>
 				</Form>
 				<Form method="post">
 					<input
@@ -129,15 +142,33 @@ export default function AdminRoomControl() {
 						name="intent"
 						value={state.chatEnabled ? 'disable-chat' : 'enable-chat'}
 					/>
-					<Button type="submit" displayType="secondary">
-						{state.chatEnabled ? 'Slå chat fra' : 'Slå chat til'}
-					</Button>
+					<Tooltip
+						content={
+							state.chatEnabled
+								? 'Slå chatten fra for alle deltagere'
+								: 'Slå chatten til for alle deltagere'
+						}
+					>
+						<Button
+							type="submit"
+							displayType="secondary"
+							aria-label={state.chatEnabled ? 'Slå chat fra' : 'Slå chat til'}
+						>
+							{state.chatEnabled ? 'Slå chat fra' : 'Slå chat til'}
+						</Button>
+					</Tooltip>
 				</Form>
 				<Form method="post">
 					<input type="hidden" name="intent" value="mute-all" />
-					<Button type="submit" displayType="danger">
-						Mute alle
-					</Button>
+					<Tooltip content="Mute alle deltagere i mødet">
+						<Button
+							type="submit"
+							displayType="danger"
+							aria-label="Mute alle deltagere"
+						>
+							Mute alle
+						</Button>
+					</Tooltip>
 				</Form>
 			</section>
 
@@ -169,42 +200,51 @@ export default function AdminRoomControl() {
 									<Form method="post">
 										<input type="hidden" name="intent" value="kick" />
 										<input type="hidden" name="userId" value={user.id} />
-										<Button
-											type="submit"
-											displayType="secondary"
-											className={roomRowButtonClassName}
-										>
-											Fjern
-										</Button>
+										<Tooltip content={`Fjern ${user.name} fra mødet`}>
+											<Button
+												type="submit"
+												displayType="secondary"
+												className={roomRowButtonClassName}
+												aria-label={`Fjern ${user.name}`}
+											>
+												Fjern
+											</Button>
+										</Tooltip>
 									</Form>
 									<Form method="post">
 										<input type="hidden" name="intent" value="ban-username" />
 										<input type="hidden" name="userId" value={user.id} />
-										<Button
-											type="submit"
-											displayType="danger"
-											className={roomRowButtonClassName}
-											title="Forhindrer denne deltager i at joine igen med samme navn"
-										>
-											Ban bruger
-										</Button>
+										<Tooltip content="Forhindrer denne deltager i at joine igen med samme navn">
+											<Button
+												type="submit"
+												displayType="danger"
+												className={roomRowButtonClassName}
+												aria-label={`Ban brugernavnet ${user.name}`}
+											>
+												Ban bruger
+											</Button>
+										</Tooltip>
 									</Form>
 									<Form method="post">
 										<input type="hidden" name="intent" value="ban-ip" />
 										<input type="hidden" name="userId" value={user.id} />
-										<Button
-											type="submit"
-											displayType="danger"
-											className={roomRowButtonClassName}
-											disabled={!user.ip}
-											title={
+										<Tooltip
+											content={
 												user.ip
 													? 'Forhindrer denne IP-adresse i at joine noget møde igen'
 													: 'IP-adresse ukendt'
 											}
 										>
-											Ban IP
-										</Button>
+											<Button
+												type="submit"
+												displayType="danger"
+												className={roomRowButtonClassName}
+												disabled={!user.ip}
+												aria-label="Ban IP-adresse"
+											>
+												Ban IP
+											</Button>
+										</Tooltip>
 									</Form>
 								</div>
 							</li>

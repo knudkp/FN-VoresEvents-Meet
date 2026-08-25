@@ -4,6 +4,7 @@ import { cn } from '~/utils/style'
 import { Button } from './Button'
 import { Input } from './Input'
 import { Label } from './Label'
+import { Tooltip } from './Tooltip'
 
 const inputClassName =
 	'border-zinc-300 bg-white px-3 py-2 focus:border-[#0d6d72] focus:outline-none focus:ring-2 focus:ring-[#0d6d72]/30 dark:border-zinc-300 dark:bg-white dark:text-zinc-900'
@@ -30,20 +31,26 @@ export function AuthChoiceForm({ error }: { error?: string }) {
 	return (
 		<>
 			<div className="mb-6 mt-4 flex gap-3">
-				<button
-					type="button"
-					onClick={() => setChoice('guest')}
-					className={choiceButtonClassName(choice === 'guest')}
-				>
-					Fortsæt som gæst
-				</button>
-				<button
-					type="button"
-					onClick={() => setChoice('admin')}
-					className={choiceButtonClassName(choice === 'admin')}
-				>
-					Som admin
-				</button>
+				<Tooltip content="Deltag som gæst uden konto">
+					<button
+						type="button"
+						onClick={() => setChoice('guest')}
+						aria-label="Fortsæt som gæst"
+						className={choiceButtonClassName(choice === 'guest')}
+					>
+						Fortsæt som gæst
+					</button>
+				</Tooltip>
+				<Tooltip content="Log ind med din admin- eller brugerkonto">
+					<button
+						type="button"
+						onClick={() => setChoice('admin')}
+						aria-label="Log ind som admin"
+						className={choiceButtonClassName(choice === 'admin')}
+					>
+						Som admin
+					</button>
+				</Tooltip>
 			</div>
 
 			{choice === 'guest' && (
@@ -63,9 +70,11 @@ export function AuthChoiceForm({ error }: { error?: string }) {
 						/>
 					</div>
 					{error && <p className="text-sm text-red-500">{error}</p>}
-					<Button type="submit" className={continueButtonClassName}>
-						Fortsæt
-					</Button>
+					<Tooltip content="Fortsæt">
+						<Button type="submit" className={continueButtonClassName}>
+							Fortsæt
+						</Button>
+					</Tooltip>
 				</Form>
 			)}
 
@@ -95,9 +104,11 @@ export function AuthChoiceForm({ error }: { error?: string }) {
 						/>
 					</div>
 					{error && <p className="text-sm text-red-500">{error}</p>}
-					<Button type="submit" className={continueButtonClassName}>
-						Fortsæt
-					</Button>
+					<Tooltip content="Fortsæt">
+						<Button type="submit" className={continueButtonClassName}>
+							Fortsæt
+						</Button>
+					</Tooltip>
 				</Form>
 			)}
 		</>

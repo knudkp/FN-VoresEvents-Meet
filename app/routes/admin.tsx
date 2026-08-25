@@ -23,6 +23,7 @@ import {
 } from '~/components/AdminPanel'
 import { Button } from '~/components/Button'
 import { Disclaimer } from '~/components/Disclaimer'
+import { Tooltip } from '~/components/Tooltip'
 import { hashPassword } from '~/utils/hashPassword.server'
 import getUsername from '~/utils/getUsername.server'
 import { sendSetPasswordEmail } from '~/utils/sendEmail.server'
@@ -320,9 +321,15 @@ export default function AdminDashboard() {
 				<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-5 dark:border-zinc-700">
 					<h1 className="text-2xl font-bold text-[#0b565b]">Admin</h1>
 					<Form method="post" action="/admin/logout">
-						<Button type="submit" displayType="secondary">
-							Log ud
-						</Button>
+						<Tooltip content="Log ud af admin-panelet">
+							<Button
+								type="submit"
+								displayType="secondary"
+								aria-label="Log ud af admin-panelet"
+							>
+								Log ud
+							</Button>
+						</Tooltip>
 					</Form>
 				</div>
 				<div className="min-h-0 flex-1 overflow-y-auto p-8">

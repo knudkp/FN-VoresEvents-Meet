@@ -16,7 +16,7 @@ export const LeaveRoomButton: FC<LeaveRoomButtonProps> = ({
 }) => {
 	const navigate = useNavigate()
 	return (
-		<Tooltip content="Leave">
+		<Tooltip content="Forlad mødet">
 			<Button
 				displayType="danger"
 				onClick={() => {
@@ -26,8 +26,9 @@ export const LeaveRoomButton: FC<LeaveRoomButtonProps> = ({
 						navigateToFeedbackPage ? `/call-quality-feedback?${params}` : '/'
 					)
 				}}
+				aria-label="Forlad mødet"
 			>
-				<VisuallyHidden>Leave</VisuallyHidden>
+				<VisuallyHidden>Forlad mødet</VisuallyHidden>
 				<Icon type="phoneXMark" />
 			</Button>
 		</Tooltip>

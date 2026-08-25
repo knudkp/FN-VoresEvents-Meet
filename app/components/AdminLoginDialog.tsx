@@ -11,20 +11,24 @@ import {
 } from './Dialog'
 import { Input } from './Input'
 import { Label } from './Label'
+import { Tooltip } from './Tooltip'
 
 export const AdminLoginDialog: FC = () => {
 	const fetcher = useFetcher<{ error?: string }>()
 
 	return (
 		<Dialog>
-			<Trigger asChild>
-				<button
-					type="button"
-					className="text-xs text-zinc-400 underline hover:text-zinc-600"
-				>
-					Admin
-				</button>
-			</Trigger>
+			<Tooltip content="Log ind som admin">
+				<Trigger asChild>
+					<button
+						type="button"
+						aria-label="Log ind som admin"
+						className="text-xs text-zinc-400 underline hover:text-zinc-600"
+					>
+						Admin
+					</button>
+				</Trigger>
+			</Tooltip>
 			<Portal>
 				<DialogOverlay />
 				<DialogContent>
@@ -50,13 +54,16 @@ export const AdminLoginDialog: FC = () => {
 						{fetcher.data?.error && (
 							<p className="text-sm text-red-500">{fetcher.data.error}</p>
 						)}
-						<Button
-							type="submit"
-							className="w-full"
-							disabled={fetcher.state !== 'idle'}
-						>
-							Log ind
-						</Button>
+						<Tooltip content="Log ind som admin">
+							<Button
+								type="submit"
+								className="w-full"
+								disabled={fetcher.state !== 'idle'}
+								aria-label="Log ind som admin"
+							>
+								Log ind
+							</Button>
+						</Tooltip>
 					</fetcher.Form>
 				</DialogContent>
 			</Portal>

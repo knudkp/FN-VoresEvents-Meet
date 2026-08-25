@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRoomContext } from '~/hooks/useRoomContext'
 import { Button } from './Button'
 import { Icon } from './Icon/Icon'
+import { Tooltip } from './Tooltip'
 
 interface ScreenshareButtonProps {}
 
@@ -27,13 +28,18 @@ export const ScreenshareButton: FC<ScreenshareButtonProps> = () => {
 
 	if (!canShareScreen) return null
 
+	const label = screenShareEnabled ? 'Stop skærmdeling' : 'Del skærm'
+
 	return (
-		<Button
-			displayType={screenShareEnabled ? 'danger' : 'secondary'}
-			onClick={screenShareEnabled ? endScreenShare : startScreenShare}
-		>
-			<VisuallyHidden>Share screen</VisuallyHidden>
-			<Icon type="screenshare" />
-		</Button>
+		<Tooltip content={label}>
+			<Button
+				displayType={screenShareEnabled ? 'danger' : 'secondary'}
+				onClick={screenShareEnabled ? endScreenShare : startScreenShare}
+				aria-label={label}
+			>
+				<VisuallyHidden>{label}</VisuallyHidden>
+				<Icon type="screenshare" />
+			</Button>
+		</Tooltip>
 	)
 }

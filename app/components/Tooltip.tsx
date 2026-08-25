@@ -21,9 +21,13 @@ export const Tooltip: FC<TooltipProps> = ({
 			<RadixTooltip.Root open={open} onOpenChange={onOpenChange}>
 				<RadixTooltip.Trigger asChild>{children}</RadixTooltip.Trigger>
 				<RadixTooltip.Portal>
-					<RadixTooltip.Content className="bg-zinc-100 dark:bg-zinc-600 text-sm px-2 py-1 drop-shadow-md dark:drop-shadow-none rounded">
+					<RadixTooltip.Content
+						align="start"
+						sideOffset={4}
+						className="z-[100] rounded bg-black px-2 py-1 text-left text-xs text-white shadow-md"
+					>
 						{content}
-						<RadixTooltip.Arrow className="fill-zinc-100 dark:fill-zinc-600 drop-shadow dark:drop-shadow-none rounded" />
+						<RadixTooltip.Arrow className="fill-black" />
 					</RadixTooltip.Content>
 				</RadixTooltip.Portal>
 			</RadixTooltip.Root>

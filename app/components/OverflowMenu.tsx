@@ -11,6 +11,7 @@ import { MuteAllDialog } from './MuteAllDialog'
 import { participantCount, ParticipantsDialog } from './ParticipantsMenu'
 import { ReportBugDialog } from './ReportBugDialog'
 import { SettingsDialog } from './SettingsDialog'
+import { Tooltip } from './Tooltip'
 
 interface OverflowMenuProps {
 	bugReportsEnabled: boolean
@@ -34,12 +35,14 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 	return (
 		<>
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger asChild>
-					<Button displayType="secondary">
-						<VisuallyHidden>More options</VisuallyHidden>
-						<Icon type="EllipsisVerticalIcon" />
-					</Button>
-				</DropdownMenu.Trigger>
+				<Tooltip content="Flere indstillinger">
+					<DropdownMenu.Trigger asChild>
+						<Button displayType="secondary" aria-label="Flere indstillinger">
+							<VisuallyHidden>Flere indstillinger</VisuallyHidden>
+							<Icon type="EllipsisVerticalIcon" />
+						</Button>
+					</DropdownMenu.Trigger>
+				</Tooltip>
 				<DropdownMenu.Portal>
 					<DropdownMenu.Content sideOffset={5}>
 						{simulcastEnabled && (
@@ -47,7 +50,9 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 								onSelect={() => setDataSaverMode(!dataSaverMode)}
 							>
 								<Icon type="WifiIcon" className="mr-2" />
-								{dataSaverMode ? 'Disable Data Saver' : 'Enable Data Saver'}
+								{dataSaverMode
+									? 'Slå databesparelse fra'
+									: 'Slå databesparelse til'}
 							</DropdownMenu.Item>
 						)}
 						<DropdownMenu.Item
@@ -57,13 +62,13 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 							}}
 						>
 							<Icon type="PhoneIcon" className="mr-2" />
-							{audioOnlyMode ? 'Disable Audio Only' : 'Enable Audio Only'}
+							{audioOnlyMode ? 'Slå kun lyd fra' : 'Slå kun lyd til'}
 						</DropdownMenu.Item>
 						<DropdownMenu.Item
 							onSelect={() => navigator.clipboard.writeText(roomUrl)}
 						>
 							<Icon type="ClipboardDocumentIcon" className="mr-2" />
-							Copy URL
+							Kopiér link
 						</DropdownMenu.Item>
 						<DropdownMenu.Item
 							onSelect={() => {
@@ -71,7 +76,7 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 							}}
 						>
 							<Icon type="cog" className="mr-2" />
-							Settings
+							Indstillinger
 						</DropdownMenu.Item>
 						{bugReportsEnabled && (
 							<DropdownMenu.Item
@@ -80,7 +85,7 @@ export const OverflowMenu: FC<OverflowMenuProps> = ({ bugReportsEnabled }) => {
 								}}
 							>
 								<Icon type="bug" className="mr-2" />
-								Report bug
+								Rapportér fejl
 							</DropdownMenu.Item>
 						)}
 						<DropdownMenu.Item
