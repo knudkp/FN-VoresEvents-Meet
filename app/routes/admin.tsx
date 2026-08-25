@@ -311,11 +311,11 @@ export default function AdminDashboard() {
 		: 'users'
 
 	return (
-		<div className="mx-auto flex h-full max-w-6xl flex-col text-zinc-800">
-			<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
+		<div className="mx-auto flex h-full max-w-6xl flex-col text-zinc-800 dark:text-zinc-100">
+			<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-5 dark:border-zinc-700">
 				<h1 className="text-2xl font-bold text-[#0b565b]">Admin</h1>
 				<Form method="post" action="/admin/logout">
-					<Button type="submit" displayType="secondary" className="text-xs">
+					<Button type="submit" displayType="secondary">
 						Log ud
 					</Button>
 				</Form>
@@ -325,7 +325,7 @@ export default function AdminDashboard() {
 					activeTab={activeTab}
 					onTabChange={(tab) => setSearchParams({ tab })}
 				/>
-				<div className="min-h-0 flex-1 overflow-y-auto p-6">
+				<div className="min-h-0 flex-1 overflow-y-auto p-8">
 					<AdminPanelSections
 						data={data}
 						actionData={actionData}

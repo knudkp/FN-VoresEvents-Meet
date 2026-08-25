@@ -3,12 +3,7 @@ import * as RadixDialog from '@radix-ui/react-dialog'
 import { useEffect, useState } from 'react'
 import type { action as adminAction, loader as adminLoader } from '~/routes/admin'
 import { cn } from '~/utils/style'
-import {
-	AdminNav,
-	AdminPanelSections,
-	adminTabFormId,
-	type AdminTabId,
-} from './AdminPanel'
+import { AdminNav, AdminPanelSections, type AdminTabId } from './AdminPanel'
 import { Button } from './Button'
 import { Dialog, DialogClose, DialogOverlay, DialogTitle, Portal, Trigger } from './Dialog'
 
@@ -31,7 +26,6 @@ export function AdminPanelDialog() {
 	}, [actionFetcher.state, actionFetcher.data])
 
 	const data = loaderFetcher.data
-	const activeFormId = adminTabFormId(activeTab)
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -53,12 +47,12 @@ export function AdminPanelDialog() {
 						'dark:bg-zinc-900 dark:shadow-none'
 					)}
 				>
-					<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 pr-14 dark:border-zinc-700">
+					<div className="flex items-center justify-between border-b border-zinc-200 px-6 py-5 pr-14 dark:border-zinc-700">
 						<DialogTitle>Admin</DialogTitle>
 					</div>
 					<div className="flex min-h-0 flex-1">
 						<AdminNav activeTab={activeTab} onTabChange={setActiveTab} />
-						<div className="min-h-0 flex-1 overflow-y-auto p-6">
+						<div className="min-h-0 flex-1 overflow-y-auto p-8">
 							{data ? (
 								<AdminPanelSections
 									data={data}
@@ -71,16 +65,13 @@ export function AdminPanelDialog() {
 							)}
 						</div>
 					</div>
-					<div className="flex items-center justify-end gap-3 border-t border-zinc-200 px-6 py-4 dark:border-zinc-700">
+					<div className="flex items-center justify-end border-t border-zinc-200 px-6 py-4 dark:border-zinc-700">
 						<Button
 							type="button"
 							displayType="secondary"
 							onClick={() => setOpen(false)}
 						>
 							Luk
-						</Button>
-						<Button type="submit" form={activeFormId} disabled={!activeFormId}>
-							Gem indstillinger
 						</Button>
 					</div>
 					<DialogClose />

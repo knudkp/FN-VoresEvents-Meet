@@ -106,6 +106,12 @@ const roleLabels = {
 	user: 'Bruger',
 } as const
 
+const roleBadgeClassName: Record<UserRow['role'], string> = {
+	admin: 'bg-[#0d6d72]/10 text-[#0b565b] dark:bg-[#0d6d72]/20 dark:text-teal-300',
+	moderator: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+	user: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+}
+
 const actionLabels: Record<string, string> = {
 	lockRoom: 'Låste rummet',
 	unlockRoom: 'Låste rummet op',
@@ -138,14 +144,45 @@ function formatLogDate(created: string): string {
 	}
 }
 
-const cardClassName =
-	'rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-800/50'
-const cardRowClassName = cn(
-	cardClassName,
-	'flex items-center justify-between gap-3'
-)
+// Row-level actions (Rediger, Slet, Ban IP, Ophæv, ...) reuse the shared
+// Button for its color semantics (secondary/danger), but override its
+// bold/uppercase CTA look — right for a handful of hero buttons, too
+// heavy repeated a dozen times per screen in a dense admin table.
+const rowButtonClassName =
+	'rounded-md border px-3 py-1.5 text-xs font-medium normal-case tracking-normal'
+
 const formPanelClassName =
-	'grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50 sm:grid-cols-2'
+	'grid gap-x-6 gap-y-4 rounded-lg border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-700 dark:bg-zinc-800/50 sm:grid-cols-2'
+
+const sectionHeadingClassName = 'text-base font-semibold text-zinc-900 dark:text-zinc-50'
+const sectionSubtextClassName = 'text-sm text-zinc-500 dark:text-zinc-400'
+const emptyStateClassName =
+	'rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'
+
+const tableWrapperClassName =
+	'overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700'
+const tableClassName = 'w-full min-w-[36rem] text-left text-sm'
+const theadClassName =
+	'bg-zinc-100 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+const thClassName = 'px-4 py-2.5'
+const tdClassName = 'px-4 py-3 align-top'
+const trClassName =
+	'divide-y divide-zinc-200 bg-white dark:divide-zinc-700 dark:bg-zinc-900/40 [&>tr]:border-t [&>tr]:border-zinc-200 dark:[&>tr]:border-zinc-700 [&>tr:first-child]:border-t-0 [&>tr]:transition-colors hover:[&>tr]:bg-zinc-50 dark:hover:[&>tr]:bg-zinc-800/40'
+
+function SectionHeader({
+	title,
+	subtitle,
+}: {
+	title: string
+	subtitle?: string
+}) {
+	return (
+		<div className="space-y-1">
+			<h2 className={sectionHeadingClassName}>{title}</h2>
+			{subtitle && <p className={sectionSubtextClassName}>{subtitle}</p>}
+		</div>
+	)
+}
 
 export function AdminNav({
 	activeTab,
@@ -155,27 +192,29 @@ export function AdminNav({
 	onTabChange: (tab: AdminTabId) => void
 }) {
 	return (
-		<nav className="h-full w-48 shrink-0 space-y-6 overflow-y-auto border-r border-black/20 bg-[#0b1d3a] p-4">
+		<nav className="h-full w-52 shrink-0 space-y-7 overflow-y-auto border-r border-black/20 bg-[#0b1d3a] p-5">
 			{ADMIN_TAB_GROUPS.map((group) => (
-				<div key={group.label} className="space-y-1">
-					<p className="px-2 text-xs font-bold uppercase tracking-wide text-blue-300/70">
+				<div key={group.label}>
+					<p className="mb-2 px-2 text-xs font-bold uppercase tracking-wider text-blue-300/80">
 						{group.label}
 					</p>
-					{group.items.map((item) => (
-						<button
-							key={item.id}
-							type="button"
-							onClick={() => onTabChange(item.id)}
-							className={cn(
-								'block w-full rounded-md px-2 py-1.5 text-left text-sm',
-								item.id === activeTab
-									? 'bg-[#0d6d72] font-medium text-white'
-									: 'text-blue-100 hover:bg-white/10'
-							)}
-						>
-							{item.label}
-						</button>
-					))}
+					<div className="space-y-0.5">
+						{group.items.map((item) => (
+							<button
+								key={item.id}
+								type="button"
+								onClick={() => onTabChange(item.id)}
+								className={cn(
+									'block w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+									item.id === activeTab
+										? 'bg-[#0d6d72] font-medium text-white shadow-sm'
+										: 'text-blue-100/90 hover:bg-white/10 hover:text-white'
+								)}
+							>
+								{item.label}
+							</button>
+						))}
+					</div>
 				</div>
 			))}
 		</nav>
@@ -189,7 +228,7 @@ interface AdminPanelProps {
 	FormComponent: AdminFormComponent
 }
 
-function UserListItem({
+function UserTableRow({
 	user,
 	FormComponent: Form,
 }: {
@@ -200,95 +239,127 @@ function UserListItem({
 
 	if (isEditing) {
 		return (
-			<li className={cardClassName}>
-				<Form
-					method="post"
-					action="/admin"
-					className="grid gap-3 sm:grid-cols-2"
-					onSubmit={() => setIsEditing(false)}
-				>
-					<input type="hidden" name="intent" value="updateUser" />
-					<input type="hidden" name="username" value={user.username} />
-					<p className="font-medium sm:col-span-2">{user.username}</p>
-					<div className="space-y-2">
-						<Label htmlFor={`email-${user.username}`}>E-mail</Label>
-						<Input
-							id={`email-${user.username}`}
-							name="email"
-							type="email"
-							defaultValue={user.email}
-							required
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label htmlFor={`role-${user.username}`}>Rolle</Label>
-						<select
-							id={`role-${user.username}`}
-							name="role"
-							aria-label="Rolle"
-							defaultValue={user.role}
-							className="w-full rounded border-2 border-zinc-500 bg-zinc-100 px-2 py-1 dark:bg-zinc-700"
-						>
-							<option value="user">Bruger</option>
-							<option value="moderator">Ordstyrer</option>
-							<option value="admin">Admin</option>
-						</select>
-					</div>
-					<div className="flex gap-2 sm:col-span-2">
-						<Button type="submit" className="text-xs">
-							Gem
-						</Button>
-						<Button
-							type="button"
-							displayType="secondary"
-							className="text-xs"
-							onClick={() => setIsEditing(false)}
-						>
-							Annullér
-						</Button>
-					</div>
-				</Form>
-			</li>
+			<tr>
+				<td className={tdClassName} colSpan={4}>
+					<Form
+						method="post"
+						action="/admin"
+						className="grid gap-4 sm:grid-cols-2"
+						onSubmit={() => setIsEditing(false)}
+					>
+						<input type="hidden" name="intent" value="updateUser" />
+						<input type="hidden" name="username" value={user.username} />
+						<p className="font-medium sm:col-span-2">{user.username}</p>
+						<div className="space-y-2">
+							<Label htmlFor={`email-${user.username}`}>E-mail</Label>
+							<Input
+								id={`email-${user.username}`}
+								name="email"
+								type="email"
+								defaultValue={user.email}
+								required
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor={`role-${user.username}`}>Rolle</Label>
+							<select
+								id={`role-${user.username}`}
+								name="role"
+								aria-label="Rolle"
+								defaultValue={user.role}
+								className="w-full rounded border-2 border-zinc-400 bg-zinc-100 px-2.5 py-1.5 outline-none transition-colors focus:border-[#0d6d72] focus:ring-2 focus:ring-[#0d6d72]/20 dark:border-zinc-600 dark:bg-zinc-700"
+							>
+								<option value="user">Bruger</option>
+								<option value="moderator">Ordstyrer</option>
+								<option value="admin">Admin</option>
+							</select>
+						</div>
+						<div className="flex gap-2 sm:col-span-2">
+							<Button type="submit" className={rowButtonClassName}>
+								Gem
+							</Button>
+							<Button
+								type="button"
+								displayType="secondary"
+								className={rowButtonClassName}
+								onClick={() => setIsEditing(false)}
+							>
+								Annullér
+							</Button>
+						</div>
+					</Form>
+				</td>
+			</tr>
 		)
 	}
 
 	return (
-		<li className={cardRowClassName}>
-			<div>
-				<p className="font-medium">
-					{user.username} · {roleLabels[user.role]}
+		<tr>
+			<td className={tdClassName}>
+				<p className="font-medium text-zinc-900 dark:text-zinc-50">
+					{user.username}
 				</p>
-				<p className="text-zinc-500">
-					{user.email} · {user.passwordHash ? 'Aktiv' : 'Afventer aktivering'}
-				</p>
-			</div>
-			<div className="flex gap-2">
-				<Button
-					type="button"
-					displayType="secondary"
-					className="text-xs"
-					onClick={() => setIsEditing(true)}
+				<p className="text-zinc-500 dark:text-zinc-400">{user.email}</p>
+			</td>
+			<td className={tdClassName}>
+				<span
+					className={cn(
+						'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
+						roleBadgeClassName[user.role]
+					)}
 				>
-					Rediger
-				</Button>
-				{!user.passwordHash && (
+					{roleLabels[user.role]}
+				</span>
+			</td>
+			<td className={tdClassName}>
+				<span
+					className={cn(
+						'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
+						user.passwordHash
+							? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+							: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+					)}
+				>
+					{user.passwordHash ? 'Aktiv' : 'Afventer aktivering'}
+				</span>
+			</td>
+			<td className={cn(tdClassName, 'text-right')}>
+				<div className="flex justify-end gap-2">
+					<Button
+						type="button"
+						displayType="secondary"
+						className={rowButtonClassName}
+						onClick={() => setIsEditing(true)}
+					>
+						Rediger
+					</Button>
+					{!user.passwordHash && (
+						<Form method="post" action="/admin">
+							<input type="hidden" name="intent" value="resendInvite" />
+							<input type="hidden" name="username" value={user.username} />
+							<Button
+								type="submit"
+								displayType="secondary"
+								className={rowButtonClassName}
+							>
+								Send igen
+							</Button>
+						</Form>
+					)}
 					<Form method="post" action="/admin">
-						<input type="hidden" name="intent" value="resendInvite" />
+						<input type="hidden" name="intent" value="deleteUser" />
 						<input type="hidden" name="username" value={user.username} />
-						<Button type="submit" displayType="secondary" className="text-xs">
-							Send igen
+						<Button
+							type="submit"
+							displayType="danger"
+							className={rowButtonClassName}
+						>
+							Slet
 						</Button>
 					</Form>
-				)}
-				<Form method="post" action="/admin">
-					<input type="hidden" name="intent" value="deleteUser" />
-					<input type="hidden" name="username" value={user.username} />
-					<Button type="submit" displayType="danger" className="text-xs">
-						Slet
-					</Button>
-				</Form>
-			</div>
-		</li>
+				</div>
+			</td>
+		</tr>
 	)
 }
 
@@ -421,7 +492,10 @@ function MeetingsSection({
 	return (
 		<section className="space-y-4">
 			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h2 className="text-lg font-bold">Møder</h2>
+				<SectionHeader
+					title="Møder"
+					subtitle="Historik over møder, grupperet efter starttidspunkt."
+				/>
 				<div className="flex gap-1 rounded-md bg-zinc-100 p-1 dark:bg-zinc-800">
 					{MEETING_VIEW_MODES.map((mode) => (
 						<button
@@ -429,7 +503,7 @@ function MeetingsSection({
 							type="button"
 							onClick={() => setViewMode(mode.id)}
 							className={cn(
-								'rounded px-2.5 py-1 text-xs font-medium',
+								'rounded px-2.5 py-1 text-xs font-medium transition-colors',
 								mode.id === viewMode
 									? 'bg-white text-[#0b565b] shadow-sm dark:bg-zinc-700 dark:text-white'
 									: 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100'
@@ -469,53 +543,86 @@ function MeetingsSection({
 				</div>
 			)}
 
-			{visibleMeetings.length === 0 && (
-				<p className="text-sm text-zinc-500">
+			{visibleMeetings.length === 0 ? (
+				<p className={emptyStateClassName}>
 					{meetings.length === 0
 						? 'Ingen møder endnu.'
 						: 'Ingen møder i denne periode.'}
 				</p>
+			) : (
+				<div className={tableWrapperClassName}>
+					<table className={tableClassName}>
+						<thead className={theadClassName}>
+							<tr>
+								<th className={thClassName}>Møde</th>
+								<th className={thClassName}>Status</th>
+								<th className={thClassName}>Oprettet</th>
+								<th className={cn(thClassName, 'text-right')}>Handlinger</th>
+							</tr>
+						</thead>
+						<tbody className={trClassName}>
+							{visibleMeetings.map((meeting) => (
+								<tr key={meeting.id}>
+									<td className={tdClassName}>
+										<p className="font-medium text-zinc-900 dark:text-zinc-50">
+											{meeting.roomName ?? meeting.id}
+										</p>
+										<p className="text-zinc-500 dark:text-zinc-400">
+											{meeting.peakUserCount} deltagere på det højeste
+										</p>
+									</td>
+									<td className={tdClassName}>
+										<span
+											className={cn(
+												'inline-block rounded-full px-2 py-0.5 text-xs font-medium',
+												meeting.ended
+													? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+													: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+											)}
+										>
+											{meeting.ended ? 'Afsluttet' : 'Aktivt'}
+										</span>
+									</td>
+									<td className={cn(tdClassName, 'text-zinc-500 dark:text-zinc-400')}>
+										{formatLogDate(meeting.created)}
+									</td>
+									<td className={cn(tdClassName, 'text-right')}>
+										<div className="flex justify-end items-center gap-3">
+											{!meeting.ended && meeting.roomName && (
+												<Link
+													to={`/admin/rooms/${meeting.roomName}`}
+													className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
+												>
+													Styr live
+												</Link>
+											)}
+											<Form method="post" action="/admin">
+												<input
+													type="hidden"
+													name="intent"
+													value="deleteMeeting"
+												/>
+												<input
+													type="hidden"
+													name="meetingId"
+													value={meeting.id}
+												/>
+												<Button
+													type="submit"
+													displayType="danger"
+													className={rowButtonClassName}
+												>
+													Slet
+												</Button>
+											</Form>
+										</div>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			)}
-			<ul className="space-y-2">
-				{visibleMeetings.map((meeting) => (
-					<li key={meeting.id} className={cardRowClassName}>
-						<div>
-							<p className="font-medium">{meeting.roomName ?? meeting.id}</p>
-							<p className="flex items-center gap-2 text-zinc-500">
-								<span
-									className={cn(
-										'inline-block rounded-full px-1.5 py-0.5 text-xs font-medium',
-										meeting.ended
-											? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-											: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
-									)}
-								>
-									{meeting.ended ? 'Afsluttet' : 'Aktivt'}
-								</span>
-								{formatLogDate(meeting.created)} ·{' '}
-								{meeting.peakUserCount} deltagere på det højeste
-							</p>
-						</div>
-						<div className="flex items-center gap-3">
-							{!meeting.ended && meeting.roomName && (
-								<Link
-									to={`/admin/rooms/${meeting.roomName}`}
-									className="text-sm text-[#0d6d72] underline hover:text-[#0a565b]"
-								>
-									Styr live
-								</Link>
-							)}
-							<Form method="post" action="/admin">
-								<input type="hidden" name="intent" value="deleteMeeting" />
-								<input type="hidden" name="meetingId" value={meeting.id} />
-								<Button type="submit" displayType="danger" className="text-xs">
-									Slet
-								</Button>
-							</Form>
-						</div>
-					</li>
-				))}
-			</ul>
 		</section>
 	)
 }
@@ -532,68 +639,108 @@ function BannedSection({
 	return (
 		<div className="space-y-8">
 			<section className="space-y-3">
-				<h2 className="text-lg font-bold">Bannede IP-adresser</h2>
-				{bannedIps.length === 0 && (
-					<p className="text-sm text-zinc-500">
+				<SectionHeader
+					title="Bannede IP-adresser"
+					subtitle="Blokerer permanent for at joine noget møde fra denne IP."
+				/>
+				{bannedIps.length === 0 ? (
+					<p className={emptyStateClassName}>
 						Ingen IP-adresser er bandlyst. Ban en deltager fra "Styr live" på
 						et aktivt møde.
 					</p>
+				) : (
+					<div className={tableWrapperClassName}>
+						<table className={tableClassName}>
+							<thead className={theadClassName}>
+								<tr>
+									<th className={thClassName}>IP-adresse</th>
+									<th className={thClassName}>Bandt af</th>
+									<th className={cn(thClassName, 'text-right')}>Handling</th>
+								</tr>
+							</thead>
+							<tbody className={trClassName}>
+								{bannedIps.map((ban) => (
+									<tr key={ban.ip}>
+										<td className={cn(tdClassName, 'font-mono')}>{ban.ip}</td>
+										<td className={cn(tdClassName, 'text-zinc-500 dark:text-zinc-400')}>
+											{ban.bannedBy} · {formatLogDate(ban.created)}
+										</td>
+										<td className={cn(tdClassName, 'text-right')}>
+											<Form method="post" action="/admin" className="inline">
+												<input type="hidden" name="intent" value="unbanIp" />
+												<input type="hidden" name="ip" value={ban.ip} />
+												<Button
+													type="submit"
+													displayType="secondary"
+													className={rowButtonClassName}
+												>
+													Ophæv
+												</Button>
+											</Form>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
 				)}
-				<ul className="space-y-2">
-					{bannedIps.map((ban) => (
-						<li key={ban.ip} className={cardRowClassName}>
-							<div>
-								<p className="font-mono font-medium">{ban.ip}</p>
-								<p className="text-zinc-500">
-									Bandt af {ban.bannedBy} · {formatLogDate(ban.created)}
-								</p>
-							</div>
-							<Form method="post" action="/admin">
-								<input type="hidden" name="intent" value="unbanIp" />
-								<input type="hidden" name="ip" value={ban.ip} />
-								<Button
-									type="submit"
-									displayType="secondary"
-									className="text-xs"
-								>
-									Ophæv
-								</Button>
-							</Form>
-						</li>
-					))}
-				</ul>
 			</section>
 
 			<section className="space-y-3">
-				<h2 className="text-lg font-bold">Bandlyste deltagernavne</h2>
-				{bannedUsernames.length === 0 && (
-					<p className="text-sm text-zinc-500">
+				<SectionHeader
+					title="Bandlyste deltagernavne"
+					subtitle="Blokerer permanent for at joine noget møde med dette navn."
+				/>
+				{bannedUsernames.length === 0 ? (
+					<p className={emptyStateClassName}>
 						Ingen deltagernavne er bandlyst.
 					</p>
+				) : (
+					<div className={tableWrapperClassName}>
+						<table className={tableClassName}>
+							<thead className={theadClassName}>
+								<tr>
+									<th className={thClassName}>Navn</th>
+									<th className={thClassName}>Bandt af</th>
+									<th className={cn(thClassName, 'text-right')}>Handling</th>
+								</tr>
+							</thead>
+							<tbody className={trClassName}>
+								{bannedUsernames.map((ban) => (
+									<tr key={ban.username}>
+										<td className={cn(tdClassName, 'font-medium')}>
+											{ban.username}
+										</td>
+										<td className={cn(tdClassName, 'text-zinc-500 dark:text-zinc-400')}>
+											{ban.bannedBy} · {formatLogDate(ban.created)}
+										</td>
+										<td className={cn(tdClassName, 'text-right')}>
+											<Form method="post" action="/admin" className="inline">
+												<input
+													type="hidden"
+													name="intent"
+													value="unbanUsername"
+												/>
+												<input
+													type="hidden"
+													name="username"
+													value={ban.username}
+												/>
+												<Button
+													type="submit"
+													displayType="secondary"
+													className={rowButtonClassName}
+												>
+													Ophæv
+												</Button>
+											</Form>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
 				)}
-				<ul className="space-y-2">
-					{bannedUsernames.map((ban) => (
-						<li key={ban.username} className={cardRowClassName}>
-							<div>
-								<p className="font-medium">{ban.username}</p>
-								<p className="text-zinc-500">
-									Bandt af {ban.bannedBy} · {formatLogDate(ban.created)}
-								</p>
-							</div>
-							<Form method="post" action="/admin">
-								<input type="hidden" name="intent" value="unbanUsername" />
-								<input type="hidden" name="username" value={ban.username} />
-								<Button
-									type="submit"
-									displayType="secondary"
-									className="text-xs"
-								>
-									Ophæv
-								</Button>
-							</Form>
-						</li>
-					))}
-				</ul>
 			</section>
 		</div>
 	)
@@ -615,29 +762,32 @@ export function AdminPanelSections({
 		actionData && 'error' in actionData ? actionData.error : undefined
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-8">
 			{!hasDb && (
-				<div className="rounded-md bg-zinc-100 p-3 text-sm text-zinc-600">
+				<div className="rounded-md bg-zinc-100 p-3 text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
 					Ingen database er konfigureret — rum-konfiguration og mødelister er
 					tomme, indtil en D1-database er koblet på.
 				</div>
 			)}
 			{actionError && (
-				<div className="rounded-md bg-red-100 p-3 text-sm text-red-800">
+				<div className="rounded-md bg-red-100 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
 					{actionError}
 				</div>
 			)}
 			{setPasswordUrl && (
-				<div className="space-y-1 rounded-md bg-zinc-100 p-3 text-sm text-zinc-700">
+				<div className="space-y-1 rounded-md bg-zinc-100 p-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
 					<p>Kunne ikke sende e-mail — send dette link manuelt:</p>
 					<p className="break-all font-mono text-xs">{setPasswordUrl}</p>
 				</div>
 			)}
 
 			{activeTab === 'users' && (
-				<div className="space-y-8">
+				<div className="space-y-10">
 					<section className="space-y-4">
-						<h2 className="text-lg font-bold">Opret bruger</h2>
+						<SectionHeader
+							title="Opret bruger"
+							subtitle="Sender en invitation med et link til at sætte adgangskode."
+						/>
 						<Form
 							method="post"
 							action="/admin"
@@ -653,47 +803,68 @@ export function AdminPanelSections({
 								<Label htmlFor="email">E-mail</Label>
 								<Input id="email" name="email" type="email" required />
 							</div>
-							<div className="space-y-2 sm:col-span-2">
+							<div className="space-y-2">
 								<Label htmlFor="role">Rolle</Label>
 								<select
 									id="role"
 									name="role"
 									aria-label="Rolle"
 									defaultValue="user"
-									className="w-full rounded border-2 border-zinc-500 bg-zinc-100 px-2 py-1 dark:bg-zinc-700"
+									className="w-full rounded border-2 border-zinc-400 bg-zinc-100 px-2.5 py-1.5 outline-none transition-colors focus:border-[#0d6d72] focus:ring-2 focus:ring-[#0d6d72]/20 dark:border-zinc-600 dark:bg-zinc-700"
 								>
 									<option value="user">Bruger</option>
 									<option value="moderator">Ordstyrer</option>
 									<option value="admin">Admin</option>
 								</select>
 							</div>
+							<div className="flex items-end">
+								<Button type="submit">Opret og send invitation</Button>
+							</div>
 						</Form>
 					</section>
 
 					<section className="space-y-3">
-						<h2 className="text-lg font-bold">Brugere</h2>
-						{users.length === 0 && (
-							<p className="text-sm text-zinc-500">
+						<SectionHeader title="Brugere" />
+						{users.length === 0 ? (
+							<p className={emptyStateClassName}>
 								Ingen brugere er oprettet endnu.
 							</p>
+						) : (
+							<div className={tableWrapperClassName}>
+								<table className={tableClassName}>
+									<thead className={theadClassName}>
+										<tr>
+											<th className={thClassName}>Bruger</th>
+											<th className={thClassName}>Rolle</th>
+											<th className={thClassName}>Status</th>
+											<th className={cn(thClassName, 'text-right')}>
+												Handlinger
+											</th>
+										</tr>
+									</thead>
+									<tbody className={trClassName}>
+										{users.map((user) => (
+											<UserTableRow
+												key={user.username}
+												user={user}
+												FormComponent={Form}
+											/>
+										))}
+									</tbody>
+								</table>
+							</div>
 						)}
-						<ul className="space-y-2">
-							{users.map((user) => (
-								<UserListItem
-									key={user.username}
-									user={user}
-									FormComponent={Form}
-								/>
-							))}
-						</ul>
 					</section>
 				</div>
 			)}
 
 			{activeTab === 'rooms' && (
-				<div className="space-y-8">
+				<div className="space-y-10">
 					<section className="space-y-4">
-						<h2 className="text-lg font-bold">Konfigurér rum</h2>
+						<SectionHeader
+							title="Konfigurér rum"
+							subtitle="Forudindstil et rums lås/chat-status og evt. værts-adgangskode."
+						/>
 						<Form
 							method="post"
 							action="/admin"
@@ -723,43 +894,78 @@ export function AdminPanelSections({
 								<Label htmlFor="password">Vært-adgangskode (valgfri)</Label>
 								<Input id="password" name="password" type="password" />
 							</div>
+							<div className="sm:col-span-2">
+								<Button type="submit">Gem rum</Button>
+							</div>
 						</Form>
 					</section>
 
 					<section className="space-y-3">
-						<h2 className="text-lg font-bold">Konfigurerede rum</h2>
-						{rooms.length === 0 && (
-							<p className="text-sm text-zinc-500">
+						<SectionHeader title="Konfigurerede rum" />
+						{rooms.length === 0 ? (
+							<p className={emptyStateClassName}>
 								Ingen rum er konfigureret endnu.
 							</p>
+						) : (
+							<div className={tableWrapperClassName}>
+								<table className={tableClassName}>
+									<thead className={theadClassName}>
+										<tr>
+											<th className={thClassName}>Rum</th>
+											<th className={thClassName}>Indstillinger</th>
+											<th className={cn(thClassName, 'text-right')}>
+												Handling
+											</th>
+										</tr>
+									</thead>
+									<tbody className={trClassName}>
+										{rooms.map((room) => (
+											<tr key={room.id}>
+												<td className={cn(tdClassName, 'font-medium')}>
+													{room.id}
+												</td>
+												<td
+													className={cn(
+														tdClassName,
+														'text-zinc-500 dark:text-zinc-400'
+													)}
+												>
+													{room.lockedByDefault
+														? 'Låst fra start'
+														: 'Åbent fra start'}{' '}
+													·{' '}
+													{room.chatEnabledByDefault ? 'Chat til' : 'Chat fra'}
+													{room.presetHostPasswordHash
+														? ' · adgangskode sat'
+														: ''}
+												</td>
+												<td className={cn(tdClassName, 'text-right')}>
+													<Form method="post" action="/admin" className="inline">
+														<input
+															type="hidden"
+															name="intent"
+															value="deleteRoom"
+														/>
+														<input
+															type="hidden"
+															name="roomId"
+															value={room.id}
+														/>
+														<Button
+															type="submit"
+															displayType="danger"
+															className={rowButtonClassName}
+														>
+															Slet
+														</Button>
+													</Form>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
 						)}
-						<ul className="space-y-2">
-							{rooms.map((room) => (
-								<li key={room.id} className={cardRowClassName}>
-									<div>
-										<p className="font-medium">{room.id}</p>
-										<p className="text-zinc-500">
-											{room.lockedByDefault
-												? 'Låst fra start'
-												: 'Åbent fra start'}{' '}
-											· {room.chatEnabledByDefault ? 'Chat til' : 'Chat fra'}
-											{room.presetHostPasswordHash ? ' · adgangskode sat' : ''}
-										</p>
-									</div>
-									<Form method="post" action="/admin">
-										<input type="hidden" name="intent" value="deleteRoom" />
-										<input type="hidden" name="roomId" value={room.id} />
-										<Button
-											type="submit"
-											displayType="danger"
-											className="text-xs"
-										>
-											Slet
-										</Button>
-									</Form>
-								</li>
-							))}
-						</ul>
 					</section>
 				</div>
 			)}
@@ -778,25 +984,32 @@ export function AdminPanelSections({
 
 			{activeTab === 'auditLog' && (
 				<section className="space-y-3">
-					<h2 className="text-lg font-bold">System log</h2>
-					{auditLog.length === 0 && (
-						<p className="text-sm text-zinc-500">
+					<SectionHeader
+						title="System log"
+						subtitle="De seneste 100 administrative handlinger."
+					/>
+					{auditLog.length === 0 ? (
+						<p className={emptyStateClassName}>
 							Ingen hændelser er logget endnu.
 						</p>
+					) : (
+						<ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+							{auditLog.map((entry) => (
+								<li
+									key={entry.id}
+									className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+								>
+									<p className="font-medium text-zinc-900 dark:text-zinc-50">
+										{actionLabels[entry.action] ?? entry.action}
+										{entry.targetName ? ` · ${entry.targetName}` : ''}
+									</p>
+									<p className="shrink-0 text-zinc-500 dark:text-zinc-400">
+										{entry.actorName} · {formatLogDate(entry.created)}
+									</p>
+								</li>
+							))}
+						</ul>
 					)}
-					<ul className="space-y-2">
-						{auditLog.map((entry) => (
-							<li key={entry.id} className={cardClassName}>
-								<p className="font-medium">
-									{actionLabels[entry.action] ?? entry.action}
-									{entry.targetName ? ` · ${entry.targetName}` : ''}
-								</p>
-								<p className="text-zinc-500">
-									{entry.actorName} · {formatLogDate(entry.created)}
-								</p>
-							</li>
-						))}
-					</ul>
 				</section>
 			)}
 		</div>

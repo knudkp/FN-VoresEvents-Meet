@@ -358,3 +358,27 @@ typecheck-fejl kan ligge skjult sådan.
   bekræftede header/navy-menu/footer står stille, kun content-panelet
   scroller (i modalen og på den fulde /admin-side). `npm run check`/
   `remix build` grønne lokalt før push.
+- **2026-08-25**: Rigtigt visuelt redesign af admin-panelet efter
+  brugeren meldte "stadig voldsomt grimt" — se
+  [ADMIN-ADGANG-STATUS.txt](ADMIN-ADGANG-STATUS.txt)'s fjerde
+  "NÆSTE OPGAVE"-afsnit for fuld detalje. Rod-årsag: den delte
+  [Button.tsx](app/components/Button.tsx)-komponent er bygget til
+  store CTA'er (`border-4 uppercase font-bold tracking-widest`) og
+  blev genbrugt uændret til hver lille inline-handling (Rediger, Slet,
+  Ban IP, ...) — tykt gentaget flere gange pr. række er hvad der
+  faktisk gjorde det grimt. Ny `rowButtonClassName` (tynd kant, normal
+  tekst) bruges nu til alle række-handlinger i AdminPanel.tsx og
+  [admin_.rooms.$roomName.tsx](app/routes/admin_.rooms.$roomName.tsx),
+  mens primære handlinger beholder brand-stilen. Brugere/Rum/Møder/
+  Bannede er nu rigtige `<table>`-elementer med farvede rolle/status-
+  badges i stedet for stablede kort. [Input.tsx](app/components/Input.tsx)
+  fik en fokus-ring (matcher forsidens login-felter). Fandt og rettede
+  en reel bug undervejs: "Opret bruger"/"Konfigurér rum"-formularerne
+  havde ingen submit-knap i sig selv og virkede kun via modalens
+  eksterne "Gem indstillinger"-knap — helt ubrugelige på den fulde
+  /admin-side. Hver formular fik sin egen tydelige submit-knap; den nu
+  overflødige "Gem indstillinger"-knap er fjernet fra modal-footeren
+  (viser kun "Luk"). Verificeret visuelt med Playwright på seedet
+  testdata (brugere/rum/møder/bans) på tværs af alle faner, ingen
+  konsol-fejl. `npm run check`/`remix build` grønne lokalt før push.
+  Ingen skema-ændring, ingen migration.

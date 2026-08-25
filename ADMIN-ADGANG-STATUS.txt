@@ -313,3 +313,75 @@ scroller ikke, kun det rigtige panel.
 så ingen migration nødvendig.
 
 STATUS: pushet til main.
+
+==================================================
+NÆSTE OPGAVE — Rigtig redesign efter "stadig voldsomt grimt"
+(2026-08-25, fjerde opfølgende bestilling)
+==================================================
+
+Ovenstående layout-fix (fast menu/scroll) løste kun det strukturelle
+problem — brugeren meldte tilbage at det STADIG var "voldsomt grimt"
+og bad om at der blev "gjort ekstra umage" med layoutet. Denne gang en
+reel visuel redesign, ikke bare CSS-plumbing.
+
+**ROD-ÅRSAG fundet ved at læse [Button.tsx](app/components/Button.tsx)**:
+Appens delte `Button`-komponent er bygget til store, iøjnefaldende
+CTA'er (`border-4`, `uppercase`, `font-bold`, `tracking-widest`,
+`py-[.5em] px-[1em]`) — perfekt til fx "Deltag i møde", men admin-
+panelet genbrugte den samme komponent til HVER lille handling
+(Rediger, Slet, Ban IP, Ophæv, ...) med kun `className="text-xs"`
+som eneste tilpasning. Et tykt 4px kant + versaler + bred bogstav-
+afstand på en lille inline-knap, gentaget 4-5 gange pr. række i en
+tæt liste, er det der reelt gjorde det "voldsomt grimt" — ikke
+farverne eller spacingen isoleret set.
+
+**RETTET (ægte redesign, ikke kun tweaks):**
+- Ny delt `rowButtonClassName` (`rounded-md border px-3 py-1.5 text-xs
+  font-medium normal-case tracking-normal`) bruges nu på ALLE inline
+  række-handlinger i AdminPanel.tsx og
+  [admin_.rooms.$roomName.tsx](app/routes/admin_.rooms.$roomName.tsx)
+  (Fjern/Ban bruger/Ban IP) — tynd kant, normal tekst, kompakt. De
+  primære handlinger (Opret bruger, Gem rum, Lås/Chat/Mute på "Styr
+  live") beholder den brand-tunge standard-knap-stil, så der stadig
+  er tydelig visuel forskel på primær vs. sekundær handling.
+- **Brugere/Rum/Møder/Bannede er nu RIGTIGE `<table>`-elementer** i
+  stedet for stablede `<li>`-kort — kolonneoverskrifter, ensartede
+  rækker, `divide-y`, hover-highlight. Ser markant mere ud som et
+  "rigtigt" admin-dashboard end en liste af bokse. Rolle og status har
+  nu farvede badges (grøn/gul/blå/grå) for hurtigt overblik. System
+  log er bevidst IKKE en tabel (en kronologisk feed/liste passer bedre
+  til en log).
+- **Sektions-underoverskrifter** tilføjet under hver `<h2>` (fx "Sender
+  en invitation med et link til at sætte adgangskode.") for kontekst.
+- **Tomme tilstande** fik en tydelig stiplet kant-boks i stedet for
+  bare grå tekst.
+- [Input.tsx](app/components/Input.tsx): fik en fokus-ring
+  (`focus:border-[#0d6d72] focus:ring-2 focus:ring-[#0d6d72]/20`,
+  samme visuelle sprog som forsidens login-felter i AuthChoiceForm) —
+  var der ikke før i admin-panelet.
+- Mere luft: content-padding `p-6`→`p-8`, header `py-4`→`py-5`.
+- **Rigtig bug fundet og rettet undervejs**: "Opret bruger"- og
+  "Konfigurér rum"-formularerne havde INGEN submit-knap inde i selve
+  formularen — de virkede kun via modalens eksterne "Gem
+  indstillinger"-knap (`form={id}`-attributten). Det betød de var
+  HELT ubrugelige på den fulde `/admin`-side (ingen tilsvarende
+  eksterne knap der). Rettet ved at give hver formular sin egen tydelige
+  submit-knap ("Opret og send invitation" / "Gem rum") — virker nu
+  begge steder. Som konsekvens er den generiske "Gem indstillinger"-
+  knap i modalens footer fjernet (den er nu overflødig — hver formular
+  har sin egen tydelige knap) — footeren viser kun "Luk". Dette
+  afviger fra den allerførste modal-bestilling (der bad om en "Gem
+  indstillinger"-knap), men var nødvendigt for at rette den reelle bug
+  og undgå to knapper der gjorde det samme — sig til hvis den skal
+  tilbage.
+
+VERIFICERET visuelt med Playwright: seedet realistiske testdata
+(3 brugere med forskellige roller/status, 2 rum, 2 møder, en bandlyst
+IP og et bandlyst navn) og screenshottet alle faner (Brugere inkl.
+redigeringstilstand, Rum, Bannede, Møder, System log) samt bekræftet
+ingen konsol-fejl.
+
+`npm run typecheck`/eslint (målrettet)/`test:ci`/`remix build` grønne
+lokalt før push. Ingen skema-ændring, ingen migration nødvendig.
+
+STATUS: pushet til main.
