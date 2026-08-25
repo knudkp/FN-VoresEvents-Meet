@@ -130,6 +130,9 @@ export default function Index() {
 	)
 }
 
+const dashboardButtonClassName =
+	'rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
+
 function Dashboard({
 	username,
 	usedAccess,
@@ -176,8 +179,8 @@ function Dashboard({
 										Skift
 									</a>
 								</Tooltip>
-								<Tooltip content="Log ud">
-									<Form method="post" action="/logout">
+								<Form method="post" action="/logout">
+									<Tooltip content="Log ud">
 										<button
 											type="submit"
 											className="text-sm text-red-600 underline hover:text-red-800"
@@ -185,8 +188,8 @@ function Dashboard({
 										>
 											Slet
 										</button>
-									</Form>
-								</Tooltip>
+									</Tooltip>
+								</Form>
 							</div>
 						)}
 					</div>
@@ -286,17 +289,17 @@ function Dashboard({
 					<div className="mt-8 flex items-center gap-3">
 						{isAdmin ? <AdminPanelDialog /> : <AdminLoginDialog />}
 						{!usedAccess && (
-							<Tooltip content="Log ud">
-								<Form method="post" action="/logout">
+							<Form method="post" action="/logout">
+								<Tooltip content="Log ud">
 									<button
 										type="submit"
-										className="text-xs text-zinc-400 underline hover:text-zinc-600"
+										className={dashboardButtonClassName}
 										aria-label="Log ud"
 									>
 										Log ud
 									</button>
-								</Form>
-							</Tooltip>
+								</Tooltip>
+							</Form>
 						)}
 					</div>
 				</div>

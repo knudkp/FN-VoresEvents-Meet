@@ -495,3 +495,29 @@ typecheck-fejl kan ligge skjult sådan.
   museflyt-hover i Playwright. `tsc`/eslint/vitest/`remix build`
   grønne lokalt (node-direkte workaround, npm stadig i stykker denne
   session) før push. Ingen skema-ændring.
+- **2026-08-25**: Bruger meldte tilbage samme dag at "tooltip er ikke
+  slået igennem" på trods af forrige rundes verificering, plus at
+  "Admin"/"Log ud"-knapperne på "Klar til møde" skulle se ud som
+  rigtige knapper. Fandt en **anden, beslægtet asChild-bug** end den
+  forrige runde rettede: to steder i
+  [_index.tsx](app/routes/_index.tsx) (bund-rækkens "Log ud" og
+  "Skift"/"Slet"-rækkens "Slet") lagde `<Tooltip>` uden om Remix'
+  `<Form>`-element i stedet for om selve `<button>`'et indeni —
+  `RadixTooltip.Trigger asChild` klonede derfor sine hover/ref-props
+  over på `<form>`-elementet, ikke knappen, og tooltip'en virkede
+  aldrig for netop disse to knapper (bekræftet med et grep-sweep af
+  samtlige ~45 `<Tooltip>`-brugssteder i appen — kun disse to havde
+  et ikke-forwardRef/ikke-DOM element som direkte barn). Rettet ved at
+  bytte rækkefølge: `<Form><Tooltip><button/></Tooltip></Form>`.
+  Samtidig omstylet "Admin" (både
+  [AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx) og
+  [AdminLoginDialog.tsx](app/components/AdminLoginDialog.tsx)) og bund-
+  rækkens "Log ud" fra understreget tekst-link til en rigtig lille
+  knap (`rounded-md border ... shadow-sm`, samme visuelle familie som
+  admin-panelets `rowButtonClassName`). Verificeret med Playwright mod
+  en lokal `wrangler dev`: begge tooltips bekræftet i DOM'en
+  (`[data-radix-popper-content-wrapper]` count 1) efter et rigtigt
+  `page.mouse.move`-hover, ingen konsol-fejl, skærmbillede bekræfter
+  knap-udseendet. `tsc`/eslint/vitest/`remix build` grønne lokalt
+  (node-direkte workaround, npm stadig i stykker i dette miljø) før
+  push. Ingen skema-ændring.

@@ -655,4 +655,55 @@ grønne lokalt før push (samme node-direkte workaround som ovenfor,
 `npm` selv er stadig i stykker i denne session). Ingen skema-ændring,
 ingen migration.
 
+NÆSTE OPGAVE (2026-08-25, niende runde):
+
+Bruger meldte samme dag tilbage, umiddelbart efter ottende runde:
+1. "admin og logud knappen på Klar til møde, skal være knapper."
+2. "tooltip er ikke slået igennem"
+3. "Få tooltips og ALTtexter til at virke."
+
+UNDERSØGT OG FUNDET: en ANDEN, beslægtet variant af samme asChild-bug
+end den ottende runde rettede. Denne gang ikke en Dialog/DropdownMenu/
+AlertDialog/Toast-trigger, men Tooltip's EGEN interne
+`RadixTooltip.Trigger asChild` — i [_index.tsx](app/routes/_index.tsx)
+lå `<Tooltip>` to steder uden om et Remix `<Form>`-element i stedet for
+om selve `<button>`'et indeni det:
+`<Tooltip><Form><button/></Form></Tooltip>`. Radix klonede derfor sine
+hover/ref-props over på `<form>`-elementet, ikke knappen, så tooltip'en
+aldrig virkede for netop disse to knapper: bund-rækkens "Log ud" (ved
+siden af Admin-linket) og "Skift"/"Slet"-rækkens "Slet". Bekræftet at
+det var de ENESTE to ramte steder ved et grep-sweep af samtlige ~45
+`<Tooltip content=`-brugssteder i appen og manuelt tjekke hvert
+direkte barn (kun disse to havde et ikke-forwardRef/ikke-DOM-element
+som direkte barn af Tooltip — alle andre wrapper enten et almindeligt
+`<button>/<a>/<div>`, eller en forwardRef-komponent som `Button`/
+`CopyButton`/`ButtonLink`/`Link`/Radix-primitiver).
+
+RETTET:
+- Byttet rækkefølge begge steder:
+  `<Form><Tooltip><button/></Tooltip></Form>` (Form udenom, Tooltip
+  direkte om knappen).
+- **"Admin" og "Log ud" er nu rigtige knapper**, ikke understreget
+  tekst-link: ny stil `rounded-md border border-zinc-300 bg-white
+  px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm
+  hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800
+  dark:text-zinc-200 dark:hover:bg-zinc-700` — samme visuelle familie
+  som admin-panelets `rowButtonClassName` (tynd kant, ikke den tunge
+  CTA-stil). Anvendt på "Admin"-triggeren i både
+  [AdminPanelDialog.tsx](app/components/AdminPanelDialog.tsx) (logget
+  ind som admin) og [AdminLoginDialog.tsx](app/components/AdminLoginDialog.tsx)
+  (ikke-admin), samt bund-rækkens "Log ud"-knap i _index.tsx. "Skift"/
+  "Slet"-rækken øverst er UÆNDRET i stil (kun tooltip-bug rettet) —
+  brugeren nævnte kun "admin og logud knappen", ikke Skift/Slet.
+
+VERIFICERET: lokal `wrangler dev`-server + et rigtigt
+`page.mouse.move`-hover i Playwright på begge rettede knapper —
+`[data-radix-popper-content-wrapper]`-count 1 efter hover på både
+"Admin" og "Log ud" (og separat på "Slet"), tooltip-teksten læst ud af
+DOM'en, ingen konsol-fejl, og et skærmbillede der bekræfter
+knap-udseendet (border/skygge/baggrund, ikke længere understreget
+tekst). `tsc`/eslint (målrettet de 3 ændrede filer)/vitest/
+`remix build` grønne lokalt (node-direkte workaround, npm stadig i
+stykker i dette miljø). Ingen skema-ændring, ingen migration.
+
 STATUS: pushet til main.

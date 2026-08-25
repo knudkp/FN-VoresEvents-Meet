@@ -35,7 +35,7 @@ export function AdminPanelDialog() {
 					<button
 						type="button"
 						aria-label="Åbn admin-panel"
-						className="text-xs text-zinc-400 underline hover:text-zinc-600"
+						className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
 					>
 						Admin
 					</button>
